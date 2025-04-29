@@ -3,7 +3,7 @@ Proyek Sistem Rekomendasi ini mengembangkan model content-based filtering untuk 
 
 ## Project Overview
 
-![image](https://github.com/user-attachments/assets/4bdb1b75-671d-46c7-8ad2-ce3031e8af4b)
+<img src="https://github.com/user-attachments/assets/4bdb1b75-671d-46c7-8ad2-ce3031e8af4b" alt="Buku Self Development" width="600"> 
 <br>[Referensi Gambar](https://digitalskola.com/blog/home/buku-self-development)
 
 Book Recommendation System
@@ -18,8 +18,6 @@ Untuk mengatasi tantangan ini, proyek ini mengembangkan **Sistem Rekomendasi Buk
 Untuk meningkatkan kualitas rekomendasi dan mengatasi potensi *cold start problem* (kesulitan merekomendasikan item baru atau kepada pengguna baru) [[6](https://www.researchgate.net/publication/327890511_A_Comparison_Study_Between_Content-Based_and_Popularity-Based_Filtering_via_Implementing_a_Book_Recommendation_System), [7](https://www.researchgate.net/publication/221563070_Amazoncom_recommendations_item-to-item_collaborative_filtering)], proyek ini juga mengintegrasikan **Collaborative Filtering**, khususnya metode **User-Based CF**. Pendekatan ini bekerja dengan menganalisis pola rating dari banyak pengguna untuk menemukan pengguna dengan selera serupa dan kemudian merekomendasikan buku yang disukai oleh *peer group* tersebut [[8](https://www.researchgate.net/publication/327890511_A_Comparison_Study_Between_Content-Based_and_Popularity-Based_Filtering_via_Implementing_a_Book_Recommendation_System), [9](https://www.researchgate.net/publication/282860285_Recommendation_systems_Principles_methods_and_evaluation)]. Dengan menggabungkan kedua metode ini (Hybrid System), diharapkan sistem dapat memberikan rekomendasi yang lebih akurat, beragam, dan relevan, seperti yang telah sukses diterapkan oleh platform seperti Netflix [[10](https://dl.acm.org/doi/10.1145/2843948)] dan Amazon [[11](https://ieeexplore.ieee.org/document/1167344), [2](https://download.garuda.kemdikbud.go.id/article.php?article=2044898&val=13150&title=Sistem%20Rekomendasi%20Buku%20pada%20Perpustakaan%20Daerah%20Provinsi%20Kalimantan%20Selatan%20Menggunakan%20Metode%20Content-Based%20Filtering)].
 
 Penerapan sistem rekomendasi ini diharapkan dapat meningkatkan kualitas layanan perpustakaan (atau platform buku lainnya), memudahkan pengguna menemukan buku yang sesuai minat, mempersingkat waktu pencarian, dan secara keseluruhan meningkatkan pengalaman membaca serta mendukung budaya literasi [[2](https://download.garuda.kemdikbud.go.id/article.php?article=2044898&val=13150&title=Sistem%20Rekomendasi%20Buku%20pada%20Perpustakaan%20Daerah%20Provinsi%20Kalimantan%20Selatan%20Menggunakan%20Metode%20Content-Based%20Filtering)].
-
----
 
 ## Business Understanding
 
@@ -84,8 +82,6 @@ Untuk mencapai tujuan-tujuan tersebut, pendekatan solusi berikut akan diimplemen
         *   **Switching Hybrid:** Menggunakan salah satu metode tergantung konteks (misalnya, CF untuk pengguna lama, CB untuk pengguna baru/buku baru).
         *   **Mixed Hybrid:** Menampilkan rekomendasi dari kedua sistem secara bersamaan.
     *   Tujuan hybrid adalah memanfaatkan kelebihan masing-masing pendekatan dan menutupi kekurangannya (misal, mengatasi *cold start problem* dari CF dengan CB).
-  
----
 
 ## Data Understanding
 
@@ -129,13 +125,12 @@ Berikut adalah penjelasan singkat untuk setiap kolom dalam dataset book.xlsx:
 *   **`ratings_count`**: Jumlah total pengguna yang telah memberikan penilaian (rating) pada buku. (Bertipe `float64` awalnya).
 *   **`combined_features`**: Kolom baru yang dibuat saat *data preparation*, berisi gabungan teks dari `title`, `authors`, `categories`, dan `published_year` yang telah dibersihkan. Ini adalah input utama untuk TF-IDF.
 
----
-
 ### Eksploratory Data Analysis (EDA)
 
 Analisis data eksploratif (EDA) dilakukan untuk mendapatkan pemahaman mendalam mengenai karakteristik dan distribusi data dalam dataset buku (`book.xlsx`). EDA ini membantu mengidentifikasi pola, anomali, dan bias dalam data yang dapat mempengaruhi pengembangan sistem rekomendasi. Berikut adalah temuan utama:
 
 1.  **Distribusi Kategori Buku:**
+    ![image](https://github.com/user-attachments/assets/579a7e0f-8de2-4922-a27e-106f2f472237)
     *   **Visualisasi:** *Bar chart* menampilkan 10 kategori buku teratas berdasarkan frekuensinya.
     *   **Pengamatan:**
         *   **Dominasi Fiksi:** Kategori **Fiksi (`fiction`)** sangat dominan, muncul lebih dari 2500 kali, jauh mengungguli kategori lainnya.
@@ -143,9 +138,11 @@ Analisis data eksploratif (EDA) dilakukan untuk mendapatkan pemahaman mendalam m
         *   **Ketidakseimbangan Data:** Kategori populer lainnya (seperti `history`, `literary criticism`, dll.) muncul dengan frekuensi yang jauh lebih rendah.
     *   **Interpretasi:** Distribusi kategori yang sangat tidak seimbang ini penting untuk diketahui. Hal ini berpotensi menyebabkan model rekomendasi cenderung lebih banyak menyarankan buku fiksi dibandingkan kategori lain yang kurang terwakili, kecuali jika ditangani secara khusus dalam pemodelan.
 
-    ![image](https://github.com/user-attachments/assets/579a7e0f-8de2-4922-a27e-106f2f472237)
 
-2.  **Tren Tahun Publikasi:**
+
+3.  **Tren Tahun Publikasi:**
+    ![image](https://github.com/user-attachments/assets/f954c04f-30de-4763-9b79-4aa7f07e1ba6)
+
     *   **Visualisasi:** Histogram menunjukkan distribusi jumlah buku yang diterbitkan per tahun.
     *   **Pengamatan:**
         *   **Konsentrasi pada Era Modern:** Sebagian besar buku dalam dataset diterbitkan dalam beberapa dekade terakhir.
@@ -154,18 +151,19 @@ Analisis data eksploratif (EDA) dilakukan untuk mendapatkan pemahaman mendalam m
         *   **Peningkatan Signifikan:** Jumlah penerbitan buku mulai meningkat secara signifikan sejak sekitar tahun 1970-an.
     *   **Interpretasi:** Dataset ini didominasi oleh buku-buku yang relatif modern. Sistem rekomendasi mungkin akan lebih efektif dalam merekomendasikan buku-buku baru atau yang terbit setelah tahun 1970-an karena representasi data yang lebih kaya untuk periode tersebut.
 
-    ![image](https://github.com/user-attachments/assets/f954c04f-30de-4763-9b79-4aa7f07e1ba6)
 
-3.  **Popularitas Penulis:**
+4.  **Popularitas Penulis:**
+    ![image](https://github.com/user-attachments/assets/cdb33eaa-ceb6-4d76-b038-155d584df720)
     *   **Visualisasi:** *Bar chart* menampilkan 10 penulis dengan jumlah buku terbanyak dalam dataset.
     *   **Pengamatan:**
         *   **Penulis Teratas:** **Agatha Christie** dan **Stephen King** memiliki representasi buku terbanyak (masing-masing lebih dari 35 buku). William Shakespeare juga sangat terwakili.
         *   **Representasi Tinggi Lainnya:** Penulis populer lain seperti J.R.R. Tolkien, Virginia Woolf, dan Sandra Brown juga memiliki jumlah buku yang signifikan (umumnya antara 17 hingga 26 buku).
     *   **Interpretasi:** Dataset ini memiliki bias terhadap penulis-penulis yang sangat populer dan produktif. Rekomendasi yang dihasilkan mungkin cenderung mengulang penulis-penulis ini, kecuali jika ada mekanisme untuk meningkatkan keberagaman penulis.
 
-    ![image](https://github.com/user-attachments/assets/cdb33eaa-ceb6-4d76-b038-155d584df720)
 
-4.  **Distribusi Rata-Rata Rating:**
+
+5.  **Distribusi Rata-Rata Rating:**
+    ![image](https://github.com/user-attachments/assets/55423b12-730c-48a1-84fa-4e8ce9aadc27)
     *   **Visualisasi:** Histogram menunjukkan distribusi rata-rata rating buku. *Catatan: Skala pada sumbu X (0-500) tampaknya tidak sesuai dengan skala rating buku standar (misalnya 1-5). Ini perlu diperhatikan.*
     *   **Pengamatan:**
         *   **Distribusi Bimodal:** Terdapat dua puncak utama dalam distribusi.
@@ -173,9 +171,10 @@ Analisis data eksploratif (EDA) dilakukan untuk mendapatkan pemahaman mendalam m
         *   **Puncak Kecil Rating Rendah:** Terdapat puncak kedua yang jauh lebih kecil di sekitar rating 0-50, menunjukkan adanya sekelompok buku dengan rating sangat rendah.
     *   **Interpretasi:** Adanya dua kelompok rating (tinggi dan rendah) ini menarik. Namun, **skala rating yang tidak standar (0-491?) memerlukan klarifikasi atau normalisasi** sebelum fitur ini dapat digunakan secara efektif dalam pemodelan, karena interpretasi nilai absolutnya menjadi sulit. Pola bimodal mungkin menunjukkan adanya segmen buku yang sangat disukai dan yang sangat tidak disukai.
 
-    ![image](https://github.com/user-attachments/assets/55423b12-730c-48a1-84fa-4e8ce9aadc27)
 
-5.  **Distribusi Jumlah Halaman:**
+
+6.  **Distribusi Jumlah Halaman:**
+    ![image](https://github.com/user-attachments/assets/d18202a3-8504-4dfe-a478-d35d4291ef17)
     *   **Visualisasi:** *Box plot* menunjukkan sebaran jumlah halaman buku.
     *   **Pengamatan:**
         *   **Konsentrasi Utama (Kotak/Box):** 50% buku di tengah dataset memiliki jumlah halaman antara sekitar 150-200 hingga 350-400 halaman.
@@ -184,9 +183,9 @@ Analisis data eksploratif (EDA) dilakukan untuk mendapatkan pemahaman mendalam m
         *   **Distribusi Miring ke Kanan:** Keberadaan banyak *outlier* ini membuat distribusi jumlah halaman menjadi sangat miring ke kanan (*right-skewed*).
     *   **Interpretasi:** Sebagian besar buku memiliki ketebalan standar, namun keberadaan buku-buku yang sangat tebal sebagai *outlier* signifikan. Jika fitur jumlah halaman digunakan dalam pemodelan (misalnya, untuk clustering), pengaruh *outlier* ini perlu diperhatikan, dan penggunaan teknik *scaling* yang tahan *outlier* (seperti `RobustScaler`) mungkin diperlukan.
 
-    ![image](https://github.com/user-attachments/assets/d18202a3-8504-4dfe-a478-d35d4291ef17)
 
-6.  **Keunikan Judul:**
+
+7.  **Keunikan Judul:**
     *   **Pengamatan:** Dari total 6810 entri buku, terdapat 6397 judul yang unik.
     *   **Persentase:** Ini berarti **93.9%** dari buku dalam dataset memiliki judul yang berbeda satu sama lain.
     *   **Interpretasi:** Tingkat keunikan judul yang tinggi ini menunjukkan kualitas data yang baik dari segi identifikasi buku dan minimnya duplikasi pencatatan berdasarkan judul yang sama persis. Ini memudahkan proses pencocokan judul yang dimasukkan pengguna dengan data yang ada.
@@ -194,8 +193,6 @@ Analisis data eksploratif (EDA) dilakukan untuk mendapatkan pemahaman mendalam m
     ```
     Unique Titles: 6397/6810 (93.9%)
     ```
-
----
 
 ## Data Preparation
 
@@ -248,8 +245,6 @@ Tahap persiapan data (Data Preparation) merupakan langkah penting untuk memastik
 *   **Alasan:**
     *   **Relevansi untuk Model:** Kolom-kolom ini (nomor identifikasi unik buku dan tautan gambar) tidak secara langsung memberikan informasi tentang *konten* buku yang relevan untuk pendekatan *content-based filtering* menggunakan TF-IDF pada fitur tekstual.
     *   **Efisiensi:** Menghilangkan kolom yang tidak digunakan membuat dataset lebih ringkas dan memfokuskan analisis pada fitur-fitur yang memang berkontribusi pada perhitungan kemiripan konten.
- 
----
 
 ## Modeling
 
@@ -327,8 +322,6 @@ Pendekatan kedua bertujuan untuk menambahkan dimensi lain pada rekomendasi denga
 *   **Kompleksitas Tambahan:** Memerlukan langkah tambahan untuk clustering dan interpretasi cluster.
 *   **Masih Berbasis Konten:** Rekomendasi "populer" masih diurutkan berdasarkan kemiripan konten (CBF) dengan input, hanya saja difilter dari cluster tertentu. Ini bukan pendekatan kolaboratif murni.
 *   **Ketidakseimbangan Cluster:** Seperti yang terlihat pada evaluasi, jika satu cluster sangat dominan (Cluster 0: 99.7%), kemampuan untuk merekomendasikan item dari cluster minoritas (Cluster 1: 0.3%) menjadi terbatas atau kurang berdampak luas.
-
----
 
 ## Evaluation
 
@@ -424,8 +417,6 @@ Metrik ini melihat bagaimana rekomendasi CBF murni berinteraksi dengan struktur 
     *   Untuk buku input dari Cluster 0 ("Underrated"): 100% (5/5) rekomendasi berasal dari Cluster 0.
     *   Untuk buku input dari Cluster 1 ("Best Seller"): 0% (0/5) rekomendasi berasal dari Cluster 1 (semua dari Cluster 0).
 *   **Interpretasi:** Hasil ini menunjukkan bahwa rekomendasi CBF sangat dipengaruhi oleh cluster asal buku input, terutama cluster dominan (Cluster 0). Ketika input berasal dari cluster minoritas (Cluster 1), CBF murni cenderung tetap merekomendasikan buku dari cluster mayoritas (Cluster 0) karena kemungkinan besar memiliki lebih banyak tetangga dekat secara konten di sana. Hal ini menyoroti potensi manfaat dari fungsi `recommend_with_cluster_info` yang secara eksplisit menyajikan rekomendasi buku populer dari Cluster 1 sebagai tambahan, meskipun kemiripan kontennya mungkin lebih rendah.
-
----
 
 ## Referensi
 
