@@ -20,6 +20,12 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 import difflib
+from sklearn.metrics import silhouette_score
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import RobustScaler, OneHotEncoder
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.cluster import KMeans
 from collections import Counter
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
@@ -38,34 +44,54 @@ except Exception as e:
     print(f"Incorrect file format or error: {e}")
 else:
     print("Data loaded successfully:")
-    print(df.head())
 
-"""## Data Understanding"""
+"""Pada Proses ini Mencoba **membaca file Excel** (`book.xlsx`) ke dalam DataFrame `df` sambil **menangani potensi error** yang mungkin terjadi selama proses pembacaan.
+*   **Alur Proses:**
+    1.  **Percobaan (`try`):** Kode pertama-tama *mencoba* menjalankan perintah `pd.read_excel(file_name)` untuk memuat data dari file Excel.
+    2.  **Penanganan Error: File Tidak Ditemukan (`except FileNotFoundError`):** Jika percobaan gagal karena file `book.xlsx` **tidak ditemukan** di lokasi yang diharapkan, maka kode di dalam blok `except FileNotFoundError` akan dijalankan (mencetak pesan file tidak ditemukan).
+    3.  **Penanganan Error: Lainnya (`except Exception`):** Jika percobaan gagal karena **error lain** (misalnya, file bukan format Excel yang valid, file rusak, masalah izin baca), maka kode di dalam blok `except Exception` akan dijalankan (mencetak pesan error yang lebih umum beserta detail errornya).
+    4.  **Jika Sukses (`else`):** Jika percobaan dalam blok `try` **berhasil** tanpa menimbulkan error apapun, maka kode di dalam blok `else` akan dijalankan (mencetak pesan bahwa data berhasil dimuat).
+
+## Data Understanding
+"""
 
 df.head()
 
+"""Menampilkan **beberapa baris pertama** (secara default 5 baris) dari DataFrame `df`.
+*   **Kegunaan:** Umumnya digunakan untuk **verifikasi cepat** setelah memuat data, guna memastikan data terlihat benar dan untuk melihat **nama kolom** serta **contoh nilai** di awal dataset.
+"""
+
 df.info()
+
+"""#### Penjelasan Fitur (Kolom) dalam Output:
+
+Kode ini menampilkan informasi kolom pada dataset. Berdasarkan output `df.info()`, berikut penjelasan untuk masing-masing kolom (fitur) dalam dataset buku Anda:
+
+*   **isbn13:** Nomor ISBN (International Standard Book Number) 13 digit. Pengenal unik global untuk buku. Dilihat dari `int64`, ini disimpan sebagai angka bulat.
+*   **isbn10:** Nomor ISBN 10 digit (versi lama). Pengenal unik lainnya untuk buku. Disimpan sebagai `object` (kemungkinan karena bisa mengandung huruf 'X' atau perlu mempertahankan format spesifik).
+*   **title:** Judul utama buku. Disimpan sebagai `object` (teks/string).
+*   **subtitle:** Subjudul atau judul tambahan buku. Banyak nilai kosong (`2381 non-null` dari `6810` entri), menunjukkan tidak semua buku memiliki subjudul. Disimpan sebagai `object`.
+*   **authors:** Nama penulis atau para penulis buku. Ada beberapa nilai kosong. Disimpan sebagai `object`.
+*   **categories:** Genre atau kategori buku (misalnya, Fiksi, Komputer, Sejarah). Ada beberapa nilai kosong. Disimpan sebagai `object`.
+*   **thumbnail:** Kemungkinan berisi URL atau path ke gambar sampul kecil (thumbnail) buku. Ada beberapa nilai kosong. Disimpan sebagai `object`.
+*   **description:** Deskripsi atau sinopsis singkat tentang isi buku. Ada beberapa nilai kosong. Disimpan sebagai `object`.
+*   **published\_year:** Tahun buku tersebut diterbitkan. Disimpan sebagai `float64` (angka desimal), mungkin karena ada nilai kosong yang direpresentasikan sebagai NaN (Not a Number) yang lebih cocok dengan float, atau mungkin ada kesalahan input. Ada beberapa nilai kosong.
+*   **average\_rating:** Rata-rata peringkat atau rating yang diberikan pengguna untuk buku tersebut (misalnya, dalam skala 1-5). Disimpan sebagai `float64`. Ada beberapa nilai kosong.
+*   **num\_pages:** Jumlah halaman dalam buku. Disimpan sebagai `float64`. Ada beberapa nilai kosong.
+*   **ratings\_count:** Jumlah total penilaian atau ulasan yang telah diterima buku. Disimpan sebagai `float64`. Ada beberapa nilai kosong.
+"""
 
 print(f'There are {df.shape[0]} rows and {df.shape[1]} columns in the table.')
 
+"""Kode ini Mencetak jumlah baris dan kolom dalam DataFrame `df`.
+*   **Cara Kerja:** Mengambil jumlah baris (`df.shape[0]`) dan jumlah kolom (`df.shape[1]`) lalu menampilkannya dalam sebuah kalimat.
+*   **Hasil:** Output `There are 6810 rows and 12 columns in the table.` menunjukkan DataFrame memiliki 6810 baris dan 12 kolom.
+"""
+
 df.columns
 
-"""#### Penjelasan Kolom Dataset Buku
-
-Berikut adalah penjelasan singkat untuk setiap kolom dalam dataset book.xlsx:
-
-*   `isbn13`: Nomor ISBN (International Standard Book Number) 13 digit, kode unik pengenal buku secara internasional.
-*   `isbn10`: Nomor ISBN 10 digit, kode unik pengenal buku (versi standar lama sebelum ISBN 13). Bertipe `object` (teks) karena bisa mengandung karakter 'X'.
-*   `title`: Judul utama dari buku.
-*   `subtitle`: Subjudul atau judul tambahan buku (kolom ini memiliki banyak nilai kosong/`null`).
-*   `authors`: Nama penulis atau para penulis buku. Bisa berisi lebih dari satu nama.
-*   `categories`: Kategori atau genre buku (misalnya, Fiksi, Sejarah, Komputer). Bisa berisi lebih dari satu kategori.
-*   `thumbnail`: Tautan (URL) ke gambar sampul kecil (thumbnail) buku.
-*   `description`: Ringkasan, sinopsis, atau deskripsi singkat mengenai isi buku.
-*   `published_year`: Tahun buku pertama kali diterbitkan. (Bertipe `float64` mungkin karena adanya data yang hilang atau cara data dikumpulkan, idealnya integer).
-*   `average_rating`: Rata-rata skor penilaian (rating) yang diberikan oleh pengguna untuk buku tersebut (misalnya, skala 1-5).
-*   `num_pages`: Jumlah total halaman dalam buku. (Bertipe `float64`, kemungkinan alasan yang sama dengan `published_year`).
-*   `ratings_count`: Jumlah total pengguna yang telah memberikan penilaian (rating) pada buku. (Bertipe `float64`, kemungkinan alasan yang sama).
+"""*   **Tujuan Utama:** Menampilkan **daftar nama** dari semua **kolom** yang ada dalam DataFrame `df`.
+*   **Output:** Hasilnya adalah objek `Index` yang berisi nama-nama kolom tersebut.
 """
 
 df.describe()
@@ -76,73 +102,6 @@ df.describe()
 *   Terdapat **12 fitur** (kolom) dalam dataset yang mendeskripsikan setiap buku.
 *   Dataset terdiri dari **4 fitur** dengan tipe data `float64`, **1 fitur** dengan tipe data `int64`, dan **7 fitur** dengan tipe data `object` (umumnya teks/string).
 *   Dataset ini berasal dari file berformat CSV (Comma-Separated Values).
-"""
-
-selected_features = ['title','authors','categories','published_year']
-print(selected_features)
-
-"""Alasan Pemilihan Fitur (`title`, `authors`, `categories`, `published_year`)
-
-Fitur-fitur ini dipilih karena secara kolektif memberikan deskripsi inti tentang **konten dan konteks** buku, yang esensial untuk *content-based filtering*:
-
-*   **`title`**: Kata kunci utama mengenai topik/cerita buku.
-*   **`authors`**: Penulis seringkali menentukan gaya, tema, dan kualitas; pembaca sering mengikuti penulis favorit.
-*   **`categories`**: Pengelompokan eksplisit berdasarkan genre atau subjek yang serupa.
-*   **`published_year`**: Memberikan konteks waktu (era) yang dapat mempengaruhi gaya atau relevansi, meskipun mungkin sinyal konten yang lebih lemah dibanding yang lain.
-"""
-
-# Total rows in dataset
-total_rows = len(df)
-
-# Check missing values and categorical details
-print(f"DATASET SUMMARY (TOTAL ROWS: {total_rows})\n")
-
-for feature in selected_features:
-    missing_count = df[feature].isnull().sum()
-    missing_percent = (missing_count / total_rows) * 100
-    non_missing = total_rows - missing_count
-    complete_status = "✅ COMPLETE" if missing_count == 0 else "❌ MISSING"
-
-    print(f"Feature: {feature}")
-    print(f"  Missing Values: {missing_count} ({missing_percent:.2f}%)")
-    print(f"  Non-Missing: {non_missing}")
-    print(f"  Status: {complete_status}")
-
-    # Add categorical details
-    if df[feature].dtype == 'object':  # Check if categorical
-        unique_count = df[feature].nunique()
-        sample_values = df[feature].dropna().unique()[:5].tolist()
-        print(f"  Unique Values: {unique_count}")
-        print(f"  Sample Values: {sample_values}\n")
-    else:
-        print()
-
-# Worst missing features
-worst_missing = df[selected_features].isnull().sum().sort_values(ascending=False)
-print("\nWorst Missing Features:\n", worst_missing)
-
-# Unique variations for categorical columns
-print("\nCategorical Features Details:")
-for feature in selected_features:
-    if df[feature].dtype == 'object':
-        unique_count = df[feature].nunique()
-        print(f"- {feature}: {unique_count} unique values")
-
-"""Justifikasi Pemilihan Fitur (`title`, `authors`, `categories`, `published_year`)
-
-Berdasarkan ringkasan dataset, fitur-fitur ini dipilih untuk *content-based filtering* karena:
-
-1.  **Representasi Konten Inti:**
-    *   `title`: Sebagai pengidentifikasi utama yang unik (6397 nilai unik).
-    *   `authors`: Indikator kuat untuk gaya penulisan, tema, atau seri terkait (3779 nilai unik).
-    *   `categories`: Memberikan pengelompokan eksplisit berdasarkan genre/subjek (567 nilai unik).
-
-2.  **Ketersediaan Data (Reliabilitas):**
-    *   Semua fitur yang dipilih memiliki persentase *missing values* yang sangat rendah (`title`: 0%, `published_year`: 0.09%, `authors`: 1.06%, `categories`: 1.45%).
-    *   Ini memastikan bahwa profil konten dapat dibuat untuk hampir semua buku dalam dataset, membuat fitur ini praktis dan andal untuk perhitungan kemiripan.
-
-3.  **Konteks Tambahan:**
-    *   `published_year`: Menambahkan dimensi waktu yang bisa memberikan konteks, meskipun mungkin pengaruhnya lebih kecil dibanding tiga fitur lainnya.
 
 ### Eksploratory Data Analysis
 """
@@ -265,104 +224,287 @@ Kode ini memeriksa seberapa unik kolom `title` (judul) dalam dataset:
 *   **Persentase:** Ini berarti **93.9%** dari buku dalam dataset memiliki judul yang berbeda satu sama lain.
 
 **Kesimpulan:** Sebagian besar buku dalam dataset ini memiliki judul yang unik, menunjukkan bahwa duplikasi judul (buku yang sama persis dicatat berulang kali dengan judul yang sama) sangatlah minim.
+"""
+
+text_features = ['title', 'subtitle', 'categories', 'authors']
+numeric_features = ['average_rating', 'num_pages', 'ratings_count', 'published_year']
+
+"""Kode ini membuat dua **daftar (list)** Python untuk **mengelompokkan nama-nama kolom** dari sebuah dataset (kemungkinan DataFrame `df`) berdasarkan **tipe data** yang diharapkan.
+*   **Detail:**
+    *   `text_features`: Menyimpan nama-nama kolom yang dianggap berisi data **tekstual** atau kategorikal (`title`, `subtitle`, `categories`, `authors`).
+    *   `numeric_features`: Menyimpan nama-nama kolom yang dianggap berisi data **numerik** (`average_rating`, `num_pages`, `ratings_count`, `published_year`).
+"""
+
+# Select only the numeric features for correlation analysis
+numeric_df_for_corr = df[numeric_features]
+
+# Calculate the correlation matrix
+correlation_matrix = numeric_df_for_corr.corr()
+
+# Create the heatmap for visualization
+plt.figure(figsize=(8, 6))
+sns.heatmap(correlation_matrix,
+            annot=True,
+            cmap='coolwarm',
+            fmt=".2f",
+            linewidths=.5)
+plt.title('Correlation Matrix of Numeric Features')
+plt.show()
+
+# Display the correlation matrix values (optional)
+print("\nCorrelation Matrix Values:")
+print(correlation_matrix)
+
+"""Proses ini menghitung **matriks korelasi** antara semua pasangan kolom yang ada dalam daftar `numeric_features` dan kemudian **memvisualisasikannya** menggunakan heatmap untuk memudahkan interpretasi.
+*   **Proses:**
+    1.  Menghitung koefisien korelasi Pearson (nilai antara -1 dan 1) untuk setiap pasangan fitur numerik.
+    2.  Membuat visualisasi heatmap di mana warna dan angka merepresentasikan nilai korelasi tersebut.
+
+---
+
+#### Interpretasi Visual: Correlation Matrix of Numeric Features
+
+*   **Jenis Visualisasi:** Heatmap Matriks Korelasi.
+*   **Tujuan:** Menampilkan **kekuatan dan arah hubungan linear** antara setiap pasangan fitur numerik (`average_rating`, `num_pages`, `ratings_count`, `published_year`).
+*   **Pembacaan:**
+    *   Setiap kotak menunjukkan koefisien korelasi antara fitur pada baris dan fitur pada kolom.
+    *   **Nilai 1.00 (Merah Pekat):** Menunjukkan korelasi positif sempurna (terjadi pada diagonal karena setiap fitur berkorelasi sempurna dengan dirinya sendiri).
+    *   **Nilai mendekati 0 (Biru/Ungu):** Menunjukkan tidak ada atau hubungan linear yang sangat lemah. Nilai negatif (jika ada, akan berwarna biru lebih pekat) menunjukkan hubungan terbalik.
+    *   **Nilai dalam Kotak:** Angka eksplisit dari koefisien korelasi.
+    *   **Skala Warna (Color Bar):** Memberikan panduan visual untuk nilai korelasi berdasarkan warna.
+*   **Temuan Utama:**
+    *   Berdasarkan visualisasi dan nilai yang ditampilkan (misalnya, 0.08, 0.04, -0.00, 0.05), terlihat bahwa **korelasi linear antara fitur-fitur numerik yang berbeda sangatlah lemah**. Tidak ada pasangan fitur yang menunjukkan hubungan linear yang kuat (nilai korelasi jauh dari 1 atau -1).
 
 ## Data Preparation
 
 ### Cleaning
 """
 
-# Text cleaning for text features
-for feature in selected_features[:-1]:
-    df[feature] = (
-        df[feature]
-        .astype(str)
-        .str.replace('[^a-zA-Z0-9\s]', '', regex=True)
-        .str.lower()
-    )
+essential_text_features = ['title', 'authors', 'categories', 'published_year']
+duplicate_check_subset = ['title']
 
-# Clean and convert 'published_year' to string
-df['published_year'] = (
-    df['published_year']
-    .astype(str)
-    .str.replace(r'[^0-9]', '', regex=True)
-    .replace('', '0')
-    .astype(int)
-    .astype(str)
-)
+# Clean Text Features
+print("\nCleaning text features...")
+for feature in text_features:
+    if feature in df.columns:
+        df[feature] = (
+            df[feature]
+            .fillna('')
+            .astype(str)
+            .str.replace('[^a-zA-Z0-9\\s]', '', regex=True)
+            .str.replace(r'\\s+', ' ', regex=True)
+            .str.strip()
+            .str.lower()
+        )
+print("Text features cleaned.")
 
-# Combine features into a single string column
-df['combined_features'] = (
-    df['title'] + ' ' +
-    df['authors'] + ' ' +
-    df['categories'] + ' ' +
-    df['published_year']
-)
+# Drop Rows with Empty Essential Text Features (Post-Cleaning)
+print("\nDropping rows with empty essential text...")
+initial_rows_before_text_drop = len(df)
+# Create mask to keep rows where ALL essential features are non-empty
+mask_to_keep_text = (df[essential_text_features].astype(str) != '').all(axis=1)
+df = df[mask_to_keep_text].copy()
+dropped_text_count = initial_rows_before_text_drop - len(df)
+print(f"Dropped {dropped_text_count} rows missing essential text.")
+df = df.reset_index(drop=True)
+print(f"Rows remaining: {len(df)}")
 
-# Display cleaned data preview
-print("\nCleaned Data Preview:")
-print(df.head())
+# Clean Numeric Features with Imputation
+print("\nCleaning numeric features...")
+# Handle average_rating (use median)
+if 'average_rating' in numeric_features and 'average_rating' in df.columns:
+    df['average_rating'] = pd.to_numeric(df['average_rating'], errors='coerce')
+    median_rating = df['average_rating'].median()
+    print(f"Impute average_rating NaNs with median: {median_rating:.2f}")
+    df['average_rating'] = df['average_rating'].fillna(median_rating).astype(float)
 
-# Display combined features sample
-print("\nSample Combined Features:")
-print(df['combined_features'].head().to_string(index=False))
+# Handle other numeric features
+for feature in numeric_features:
+    if feature != 'average_rating' and feature in df.columns:
+        df[feature] = pd.to_numeric(df[feature], errors='coerce')
+        if 'count' in feature or 'pages' in feature:
+            # Impute counts/pages with 0
+            df[feature] = df[feature].fillna(0).astype(int)
+            print(f"Impute {feature} NaNs with 0")
+        elif feature == 'published_year':
+            # Impute year with median of valid years, fallback to 0
+            valid_years = df[df['published_year'] > 0]['published_year']
+            year_median = valid_years.median()
+            if pd.notna(year_median):
+                print(f"Impute published_year NaNs with median year: {int(year_median)}")
+                df[feature] = df[feature].fillna(year_median).astype(int)
+            else:
+                print("Could not calculate median year, imputing year NaNs with 0")
+                df[feature] = df[feature].fillna(0).astype(int)
+        else:
+            # Impute other numeric features with their median
+            feature_median = df[feature].median()
+            df[feature] = df[feature].fillna(feature_median).astype(float)
+            print(f"Impute {feature} NaNs with median: {feature_median:.2f}")
 
-# Verify no missing values
+print("Numeric features cleaned.")
+
+# Drop Rows with Published Year = 0
+print("\nDropping rows where 'published_year' is 0...")
+initial_rows_before_year_drop = len(df)
+if 'published_year' in df.columns:
+    df = df[df['published_year'] != 0].copy()
+    dropped_year_count = initial_rows_before_year_drop - len(df)
+    print(f"Dropped {dropped_year_count} rows with year 0.")
+    df = df.reset_index(drop=True)
+    print(f"Rows remaining: {len(df)}")
+else:
+    print("Skipping year drop: 'published_year' column not found.")
+
+
+# Handle Duplicates (Keep highest ratings_count)
+print("\nChecking for duplicates...")
+initial_rows_before_dup_drop = len(df)
+# Check if all columns in subset exist
+if all(col in df.columns for col in duplicate_check_subset):
+    duplicates_found = df.duplicated(subset=duplicate_check_subset).sum()
+    print(f"Found {duplicates_found} duplicates based on {duplicate_check_subset}.")
+
+    if duplicates_found > 0 and 'ratings_count' in df.columns:
+        # Keep the first occurrence (highest ratings_count) after sorting
+        df = df.sort_values(by=['ratings_count'], ascending=False) # Sort by rating count first
+        df = df.drop_duplicates(subset=duplicate_check_subset, keep='first') # Keep highest rated one
+        df = df.reset_index(drop=True)
+
+        duplicates_dropped = initial_rows_before_dup_drop - len(df)
+        print(f"Dropped {duplicates_dropped} duplicates, kept highest ratings_count.")
+        print(f"Final rows after deduplication: {len(df)}")
+    elif duplicates_found > 0:
+         # Simple duplicate drop if no ratings_count
+         df = df.drop_duplicates(subset=duplicate_check_subset, keep='first')
+         df = df.reset_index(drop=True)
+         duplicates_dropped = initial_rows_before_dup_drop - len(df)
+         print(f"Dropped {duplicates_dropped} duplicates (ratings_count not found for sorting).")
+         print(f"Final rows after deduplication: {len(df)}")
+    else:
+        print("No duplicate rows to drop.")
+else:
+    print(f"Skipping duplicate check: One or more columns in {duplicate_check_subset} not found.")
+
+
+# Final Preview & Checks
+print("\nFinal Data Preview:")
+# Define columns for preview, checking if they exist
+preview_cols = [col for col in ['title', 'subtitle', 'authors', 'categories',
+                               'published_year', 'average_rating', 'num_pages',
+                               'ratings_count'] if col in df.columns]
+if preview_cols:
+    print(df[preview_cols].head())
+else:
+    print("No preview columns found.")
+
+
+# Check for missing values in core features
 print("\nMissing Values Check:")
-print(df[selected_features].isnull().sum())
+final_check_cols = [col for col in text_features + numeric_features if col in df.columns]
+if final_check_cols:
+    print(df[final_check_cols].isnull().sum())
+else:
+    print("No core columns found to check.")
 
-"""Interpretasi EDA: Pembersihan Teks dan Kombinasi Fitur
+# Check final data types
+print("\nData Types After Cleaning:")
+if final_check_cols:
+    print(df[final_check_cols].dtypes)
+else:
+    print("No core columns found to check types.")
 
-1.  **Pembersihan Fitur Teks (`title`, `authors`, `categories`):**
-    *   Setiap fitur teks dibersihkan dengan:
-        *   Menghapus semua karakter kecuali huruf, angka, dan spasi (`[^a-zA-Z0-9\s]`).
-        *   Mengubah semua teks menjadi huruf kecil (`lower()`).
-    *   **Tujuan:** Standarisasi teks agar kata-kata seperti "Fiction" dan "fiction" dianggap sama oleh model (TF-IDF), serta menghilangkan "noise" dari tanda baca atau simbol.
+"""Kode ini bertujuan untuk membersihkan dan merapikan data (kemungkinan data buku) dalam sebuah tabel (`df`) agar siap digunakan untuk analisis selanjutnya.
 
-2.  **Pembersihan `published_year`:**
-    *   Kolom ini secara spesifik dibersihkan untuk hanya menyisakan angka (`[^0-9]`), mengganti nilai kosong/invalid dengan '0', dan dikonversi menjadi string.
-    *   **Tujuan:** Memastikan tahun publikasi dalam format numerik string yang konsisten untuk digabungkan.
+#### 1. Membersihkan Kolom Teks
+*   Memproses setiap kolom teks yang ditentukan (seperti judul, penulis, kategori).
+*   Untuk setiap kolom teks:
+    *   Mengisi bagian yang kosong (NaN) dengan teks kosong ('').
+    *   Memastikan formatnya adalah teks (string).
+    *   Menghapus semua karakter selain huruf, angka, dan spasi (misalnya tanda baca).
+    *   Mengganti spasi yang berlebihan menjadi satu spasi saja.
+    *   Menghapus spasi di awal atau akhir teks.
+    *   Mengubah semua huruf menjadi huruf kecil.
+*   **Tujuan:** Membuat data teks menjadi seragam dan bersih.
 
-3.  **Kombinasi Fitur (`combined_features`):**
-    *   Fitur-fitur yang telah dibersihkan (`title`, `authors`, `categories`, `published_year`) digabungkan menjadi satu string tunggal untuk setiap buku, dipisahkan oleh spasi.
-    *   **Tujuan:** Membuat satu kolom teks yang merangkum informasi konten utama buku, yang akan digunakan sebagai input untuk TF-IDF Vectorizer.
+#### 2. Menghapus Baris dengan Teks Penting yang Kosong
+*   Mencari baris data dimana ada informasi teks penting (seperti judul, penulis, kategori, tahun terbit) yang kosong *setelah* langkah pembersihan pertama.
+*   Menghapus baris data yang tidak lengkap tersebut.
+*   Menata ulang nomor urut baris data.
+*   **Tujuan:** Memastikan setiap data punya informasi teks dasar yang lengkap.
 
-4.  **Verifikasi:**
-    *   Pratinjau data (`Cleaned Data Preview`) menunjukkan hasil pembersihan.
-    *   Sampel `combined_features` menunjukkan bagaimana fitur-fitur digabungkan.
-    *   Pengecekan nilai hilang (`Missing Values Check`) **memastikan bahwa fitur-fitur kunci yang dipilih (`selected_features`) sekarang tidak memiliki nilai hilang** setelah proses pembersihan dan konversi tipe data.
+#### 3. Membersihkan Kolom Angka & Mengisi Data Kosong
+*   Memproses setiap kolom angka yang ditentukan (seperti tahun terbit, rating, jumlah halaman).
+*   Mengubah format data di kolom ini menjadi format angka (jika ada yang bukan angka, akan jadi kosong/NaN).
+*   Mengisi data angka yang kosong (NaN) dengan cara tertentu:
+    *   `average_rating` (rata-rata rating): Diisi dengan **nilai tengah (median)** dari semua rating yang ada.
+    *   Kolom yang namanya mengandung 'count' atau 'pages' (jumlah): Diisi dengan **angka 0**.
+    *   `published_year` (tahun terbit): Diisi dengan **nilai tengah (median)** dari tahun-tahun yang valid (lebih besar dari 0). Jika tidak bisa dihitung, diisi **0**.
+    *   Kolom angka lainnya: Diisi dengan **nilai tengah (median)** masing-masing kolom.
+*   Mengubah format angka menjadi bilangan bulat (`int`) atau desimal (`float`) sesuai kebutuhan.
+*   **Tujuan:** Menangani data angka yang hilang dan memastikan formatnya benar.
 
-**Kesimpulan:** Proses ini berhasil membersihkan fitur-fitur tekstual dan numerik yang relevan, menggabungkannya menjadi representasi konten tunggal per buku (`combined_features`), dan memastikan tidak ada data yang hilang pada fitur-fitur kunci tersebut, sehingga siap untuk tahap vektorisasi (TF-IDF).
-"""
+#### 4. Menghapus Baris dengan Tahun Terbit = 0
+*   Menghapus baris data yang kolom `published_year` (tahun terbit) bernilai **0** (seringkali berarti data tidak valid).
+*   Menata ulang nomor urut baris data.
+*   **Tujuan:** Membuang data dengan tahun terbit yang tidak valid.
 
-df.duplicated().sum()
+#### 5. Menangani Data Ganda (Duplikat)
+*   Mengecek apakah ada baris data yang isinya sama persis berdasarkan kolom tertentu (dalam kode ini berdasarkan `'title'/judul`).
+*   **Jika ada data duplikat:**
+    *   Data akan diurutkan berdasarkan `ratings_count` (jumlah rating) dari yang terbanyak ke tersedikit (jika kolom ini ada).
+    *   Data duplikat akan dihapus, tapi **menyimpan satu** data saja (yaitu data yang punya `ratings_count` tertinggi, jika ada).
+*   Menata ulang nomor urut baris data.
+*   **Tujuan:** Menghilangkan data ganda dan secara cerdas menyimpan versi data yang dianggap paling relevan (punya rating tertinggi).
 
-"""There is no duplicate data"""
-
-df.isnull().sum()
-
-"""Interpretasi EDA: Pemeriksaan Nilai Hilang
-
-Output ini menunjukkan jumlah nilai yang hilang (kosong/NaN) di *setiap kolom* dataset **setelah** proses pembersihan dan pembuatan kolom `combined_features`.
-
-*   **Fitur Inti Lengkap:** Kolom-kolom yang **digunakan secara langsung** untuk membuat `combined_features` (`title`, `authors`, `categories`, `published_year`) dan kolom `combined_features` itu sendiri **tidak memiliki nilai hilang (0 missing values)**. Ini sangat bagus karena memastikan semua buku memiliki profil konten dasar untuk sistem rekomendasi.
-*   **Fitur Deskriptif Lainnya:** Fitur seperti `description`, `thumbnail`, `average_rating`, `num_pages`, dan `ratings_count` memiliki sejumlah kecil nilai hilang (antara 43 hingga 329), tetapi mayoritas datanya masih tersedia.
-*   **Data Tidak Lengkap:** Kolom `subtitle` memiliki jumlah nilai hilang yang **sangat signifikan (4429 missing values)**, menunjukkan bahwa informasi ini tidak tersedia untuk sebagian besar buku.
-
-**Kesimpulan:** Dataset ini, khususnya fitur-fitur yang dipilih untuk membangun `combined_features`, berada dalam kondisi **siap pakai** (tanpa nilai hilang) untuk tahap selanjutnya (vektorisasi TF-IDF). Namun, jika fitur lain seperti `subtitle` atau `description` ingin digunakan di masa depan, penanganan nilai hilang tambahan mungkin diperlukan.
-"""
-
-# Drop rows with any missing values in selected features
-df = df.dropna(subset=selected_features, how='any')
-
-"""### Tujuan Kode: `df.dropna(subset=selected_features, how='any')`
-
-*   **Tujuan:** Menghapus (drop) **seluruh baris** dari DataFrame `df` jika **minimal satu saja** dari kolom yang ada di dalam daftar `selected_features` (`title`, `authors`, `categories`, `published_year`) memiliki nilai yang hilang (kosong/NaN) pada baris tersebut.
-*   **Hasil:** Memastikan bahwa semua baris data yang tersisa memiliki informasi **lengkap** untuk fitur-fitur kunci yang akan digunakan dalam sistem rekomendasi.
+#### 6. Pratinjau Akhir & Pengecekan
+*   Menampilkan beberapa contoh baris data pertama dari kolom-kolom utama setelah dibersihkan.
+*   Memeriksa ulang apakah masih ada data yang kosong di kolom-kolom utama.
+*   Menampilkan format akhir data (teks, angka bulat, angka desimal) untuk kolom-kolom utama.
+*   **Tujuan:** Memastikan proses pembersihan sudah benar dan data siap digunakan.
 """
 
 print(f'There are {df.shape[0]} rows and {df.shape[1]} columns.')
 
+"""Output ini menunjukkan ukuran akhir dari tabel data (`df`) setelah semua proses pembersihan selesai.
+
+*   Tabel data tersebut kini memiliki **6212 baris** data.
+*   Tabel data tersebut kini memiliki **13 kolom** informasi (fitur).
+"""
+
 df.describe()
+
+"""Output `describe()` ini memberikan ringkasan statistik untuk kolom-kolom numerik dalam DataFrame (`df`) setelah proses pembersihan data:
+
+*   **Jumlah Data (`count`):** Semua kolom numerik yang ditampilkan (`isbn13`, `published_year`, `average_rating`, `num_pages`, `ratings_count`) memiliki **6212** data. Ini mengonfirmasi bahwa **tidak ada nilai yang hilang** (NaN) lagi di kolom-kolom ini setelah imputasi.
+
+*   **`published_year` (Tahun Terbit):**
+    *   Rata-rata tahun terbit adalah sekitar **1999**.
+    *   Tahun terbit paling lama adalah **1876** dan paling baru **2019**.
+    *   Setengah dari buku (median/50%) diterbitkan sebelum/sesudah tahun **2002**.
+    *   Sebagian besar buku (75%) diterbitkan setelah tahun **1997**.
+
+*   **`average_rating` (Rata-rata Rating):**
+    *   Rata-rata rating adalah sekitar **354**.
+    *   Nilai rating berkisar dari **0** hingga **491**. (Perlu diperhatikan skala rating yang digunakan, tampaknya bukan 1-5).
+    *   Setengah dari buku (median/50%) memiliki rating di bawah/di atas **392**.
+    *   Sebagian besar buku (75%) memiliki rating di atas **367**.
+
+*   **`num_pages` (Jumlah Halaman):**
+    *   Rata-rata jumlah halaman adalah **344**.
+    *   Jumlah halaman berkisar dari **0** (mungkin hasil imputasi atau data tidak valid sebelumnya) hingga **3342** halaman.
+    *   Setengah dari buku (median/50%) memiliki kurang/lebih dari **304** halaman.
+
+*   **`ratings_count` (Jumlah Pemberi Rating):**
+    *   Rata-rata jumlah pemberi rating adalah sekitar **22.600**.
+    *   Jumlah pemberi rating sangat bervariasi, mulai dari **0** hingga **lebih dari 5,6 juta**.
+    *   Setengah dari buku (median/50%) hanya memiliki kurang dari **1139** pemberi rating.
+    *   **Perbedaan besar** antara rata-rata (22.600) dan median (1139) menunjukkan bahwa sebagian kecil buku sangat populer (memiliki jumlah rating sangat tinggi) dibandingkan mayoritas buku lainnya. Sebaran data ini sangat **miring (skewed)**.
+
+*   **`isbn13`:** Meskipun ditampilkan, statistik seperti rata-rata (`mean`) atau standar deviasi (`std`) untuk ISBN biasanya tidak bermakna secara interpretatif karena ISBN adalah pengidentifikasi unik, bukan ukuran kuantitatif.
+
+Secara keseluruhan, ringkasan ini menunjukkan bahwa data numerik sudah lengkap (tidak ada nilai hilang) dan memberikan gambaran tentang rentang, nilai tengah, dan sebaran untuk setiap fitur kuantitatif buku dalam dataset. Fitur `ratings_count` terlihat memiliki sebaran yang sangat tidak merata.
+"""
 
 # Drop unnecessary columns
 columns_to_drop = [
@@ -388,37 +530,147 @@ print(f'There are {df.shape[0]} rows and {df.shape[1]} columns.')
 """
 
 # Combining all the 4 selected features
-combined_features = df['title'] + ' ' + df['categories'] + ' ' + df['authors'] + ' ' + f"{df['published_year']}"
-combined_features
+content_based_features = df['title'] + ' ' + df['categories'] + ' ' + df['authors'] + ' ' + f"{df['published_year']}"
+content_based_features
 
-"""*   **Membuat Representasi Konten Tunggal:** Kode ini bertujuan untuk menggabungkan nilai dari kolom `title`, `categories`, `authors`, dan `published_year` menjadi **satu string teks tunggal** untuk setiap buku.
-*   **Input untuk Vektorisasi:** String gabungan (`combined_features`) ini akan berfungsi sebagai **input utama** untuk `TfidfVectorizer`, memungkinkan model untuk menganalisis dan mengubah seluruh informasi konten kunci dari setiap buku menjadi representasi vektor numerik.
-``` dari kolom `title`, `categories`, `authors`, dan `published_year` menjadi **satu string teks tunggal** untuk setiap buku.
-*   **Input untuk Vektorisasi:** String gabungan ini (`combined_features`) akan berfungsi sebagai **dokumen input** untuk `TfidfVectorizer`. Dengan menggabungkan fitur-fitur ini, TF-IDF dapat menganalisis frekuensi kata di seluruh deskripsi konten gabungan buku untuk menghitung kemiripan antar buku.
+"""Langkah ini bertujuan untuk membuat satu representasi teks tunggal yang merangkum informasi penting dari setiap buku dalam dataset.
+
+#### 1. Proses Penggabungan Fitur
+*   Kode mengambil data dari kolom-kolom yang relevan dengan konten buku:
+    *   `title` (Judul)
+    *   `categories` (Kategori/Genre)
+    *   `authors` (Penulis)
+    *   `published_year` (Tahun Terbit - dikonversi menjadi teks)
+*   Untuk **setiap baris (buku)** dalam DataFrame:
+    *   Nilai dari kolom-kolom di atas digabungkan menjadi satu string teks panjang.
+    *   Spasi (`' '`) digunakan sebagai pemisah antar nilai kolom yang berbeda.
+*   Hasilnya adalah sebuah Series Pandas (`content_based_features`) yang berisi string konten gabungan untuk setiap buku.
+
+#### 2. Tujuan: Input untuk Vektorisasi TF-IDF
+*   **Dokumen Input:** String konten gabungan (`content_based_features`) ini akan berfungsi sebagai **dokumen input** utama untuk `TfidfVectorizer`. Setiap string mewakili satu "dokumen" (satu buku).
+*   **Analisis Holistik:** Dengan menggabungkan fitur-fitur ini, `TfidfVectorizer` dapat menganalisis **frekuensi kata (term frequency)** dan **kepentingannya secara keseluruhan (inverse document frequency)** di seluruh deskripsi konten gabungan tersebut.
+*   **Perhitungan Kemiripan:** Proses ini memungkinkan model (seperti TF-IDF) untuk menghitung **kemiripan (similarity)** antar buku berdasarkan representasi konten yang lebih **holistik dan komprehensif**, tidak hanya berdasarkan satu fitur saja (misalnya judul).
+"""
+
+print("First few elements of content_based_features:")
+print(content_based_features[:5] if len(content_based_features) >= 5 else content_based_features)
+print(f"Total items: {len(content_based_features)}")
+
+"""Output ini memberikan gambaran tentang variabel `content_based_features` yang telah dibuat:
+
+*   **Contoh Data:** Menampilkan **lima elemen (baris) pertama** dari `content_based_features`.
+    *   Setiap elemen mewakili **satu buku**.
+    *   Isinya adalah **satu string teks panjang** yang merupakan **hasil penggabungan** dari:
+        *   Judul (`title`)
+        *   Kategori (`categories`)
+        *   Penulis (`authors`)
+        *   Tahun Terbit (`published_year`, sebagai teks)
+    *   Contohnya menunjukkan judul seperti "harry potter and the sorcerers stone", "twilight", dll., yang digabung dengan informasi lainnya.
+
+*   **Jumlah Total:** Menunjukkan bahwa total ada **6212 item (buku)** dalam `content_based_features`. Jumlah ini sesuai dengan jumlah baris data setelah proses pembersihan.
+
+*   **Tujuan:** String gabungan ini siap digunakan sebagai input untuk langkah selanjutnya, yaitu proses vektorisasi menggunakan `TfidfVectorizer`, untuk mengubah teks ini menjadi representasi numerik yang dapat dipahami oleh model.
+"""
+
+# Converting the text data to feature vectors using more permissive settings
+vectorizer = TfidfVectorizer(
+    min_df=1,
+    max_df=0.95,
+    stop_words=None,
+    token_pattern=r'(?u)\b\w+\b',
+    lowercase=True
+)
+
+"""Langkah ini mempersiapkan alat (`TfidfVectorizer`) untuk mengubah data teks (seperti `content_based_features`) menjadi representasi vektor numerik menggunakan metode TF-IDF (Term Frequency-Inverse Document Frequency).
+
+#### Pengaturan Parameter :
+
+*   **`min_df=1`**:
+    *   Mengatur **minimum frekuensi dokumen (document frequency)**.
+    *   Nilai `1` berarti sebuah kata akan dimasukkan ke dalam kosakata (vocabulary) meskipun hanya muncul dalam **satu dokumen (buku)** saja. Ini adalah pengaturan yang paling **longgar/permisif**.
+
+*   **`max_df=0.95`**:
+    *   Mengatur **maksimum frekuensi dokumen**.
+    *   Nilai `0.95` berarti kata-kata yang muncul di **lebih dari 95%** dari total dokumen akan **diabaikan**.
+    *   Tujuannya adalah untuk mengabaikan kata-kata yang terlalu umum dalam *seluruh dataset* ini, yang mungkin tidak membantu membedakan antar buku.
+
+*   **`stop_words=None`**:
+    *   Menentukan daftar kata umum (stop words) yang akan dihapus.
+    *   Nilai `None` berarti **tidak ada daftar stop words bawaan** yang akan digunakan oleh vectorizer ini. Penghapusan stop words mungkin sudah dilakukan pada tahap pembersihan sebelumnya, atau akan ditangani oleh parameter `max_df`.
+
+*   **`token_pattern=r'(?u)\b\w+\b'`**:
+    *   Mendefinisikan pola (regular expression) untuk mengidentifikasi **token (kata)**.
+    *   Pola ini secara efektif menemukan **urutan karakter kata** (huruf, angka, garis bawah) yang dibatasi oleh "batas kata" (`\b`), termasuk token satu karakter (seperti 'a' atau '1'). `(?u)` memastikan kompatibilitas Unicode.
+
+*   **`lowercase=True`**:
+    *   Memastikan **semua teks diubah menjadi huruf kecil** *sebelum* diproses lebih lanjut (tokenisasi dan perhitungan frekuensi). Ini standar agar kata seperti "Buku" dan "buku" dianggap sama.
+
+#### Tujuan Keseluruhan :
+*   Menginisialisasi `TfidfVectorizer` dengan pengaturan yang cukup permisif (`min_df=1`, `stop_words=None`) untuk memastikan sebagian besar kata dipertahankan, sambil mengabaikan kata yang sangat umum di seluruh dataset (`max_df=0.95`).
+*   Vectorizer ini siap digunakan untuk `fit_transform` pada data teks gabungan (`content_based_features`) untuk membuat matriks TF-IDF.
 """
 
 # Converting the text data to feature vectors
 vectorizer = TfidfVectorizer()
 
-feature_vectors = vectorizer.fit_transform(combined_features)
+feature_vectors = vectorizer.fit_transform(content_based_features)
 print(feature_vectors)
 
-"""*   **Mengubah Teks Menjadi Angka:** Kode ini bertujuan untuk mengubah kolom teks `combined_features` (yang berisi gabungan judul, kategori, penulis, tahun) menjadi **representasi numerik (vektor)** menggunakan metode TF-IDF.
-*   **Memungkinkan Perhitungan Matematika:** Representasi vektor numerik ini memungkinkan komputer untuk **mengukur kemiripan** antar buku secara matematis (misalnya, menggunakan Cosine Similarity) pada langkah berikutnya.
+"""Langkah ini mengubah data teks gabungan (`content_based_features`) menjadi representasi numerik menggunakan `TfidfVectorizer`.
+
+#### Inisialisasi `TfidfVectorizer`
+*   Kode `vectorizer = TfidfVectorizer()` membuat sebuah objek `TfidfVectorizer` dengan **pengaturan default**.
+*   Ini berarti ia akan menggunakan aturan bawaan untuk tokenisasi (memecah teks menjadi kata), menghapus stop words umum bahasa Inggris (jika terdeteksi), dan menghitung skor TF-IDF.
+
+Proses `fit_transform`
+*   Kode `feature_vectors = vectorizer.fit_transform(content_based_features)` melakukan dua hal utama:
+    *   **`fit`**: `vectorizer` "mempelajari" kosakata (semua kata unik) dari seluruh `content_based_features` dan menghitung bobot IDF (Inverse Document Frequency) untuk setiap kata.
+    *   **`transform`**: `vectorizer` mengubah setiap string teks dalam `content_based_features` menjadi **vektor numerik**. Setiap elemen dalam vektor mewakili sebuah kata dari kosakata, dan nilainya adalah **skor TF-IDF** kata tersebut dalam teks (dokumen) tersebut.
+*   Hasilnya (`feature_vectors`) adalah **matriks sparse**. Matriks ini secara efisien menyimpan skor TF-IDF, di mana sebagian besar nilainya adalah nol (karena kebanyakan kata tidak muncul di setiap dokumen).
+
+Output Hasil `print(feature_vectors)`
+*   Perintah `print` menampilkan representasi ringkas dari **matriks sparse** `feature_vectors`.
+*   Outputnya biasanya akan menunjukkan:
+    *   **Indeks baris dan kolom** dari elemen yang **bukan nol**.
+    *   **Nilai skor TF-IDF** pada posisi tersebut.
+    *   Contoh format: `(indeks_dokumen, indeks_kata) skor_tfidf`
+*   Output ini **bukan** matriks penuh (karena terlalu besar), melainkan hanya ringkasan elemen-elemen penting (yang bernilai). Ini mengonfirmasi bahwa proses transformasi teks menjadi vektor numerik telah berhasil dilakukan. Vektor fitur ini siap digunakan untuk menghitung kemiripan.
 """
 
 # Calculating similarity scores between items using cosine similarity
 similarity = cosine_similarity(feature_vectors, feature_vectors)
 print(similarity)
 
-"""*   **Mengukur Kemiripan Antar Buku:** Kode ini bertujuan untuk menghitung **skor kemiripan** antara **setiap pasang buku** dalam dataset, berdasarkan representasi vektor numerik (`feature_vectors`) yang dihasilkan oleh TF-IDF.
-*   **Membuat Matriks Kemiripan:** Hasilnya adalah sebuah matriks (`similarity`) di mana setiap sel `[i][j]` berisi skor kemiripan (antara 0 dan 1) antara buku ke-`i` dan buku ke-`j`.
+"""Langkah ini menghitung seberapa mirip setiap item (buku) dengan setiap item lainnya berdasarkan representasi vektor fitur TF-IDF yang telah dibuat.
+
+#### Proses Perhitungan
+*   Kode menggunakan fungsi `cosine_similarity` dari pustaka `sklearn.metrics.pairwise`.
+*   Fungsi ini menerima `feature_vectors` (matriks TF-IDF) sebagai input *dua kali*. Ini berarti kita menghitung kemiripan antara **setiap baris (buku)** dalam matriks dengan **setiap baris lainnya**, termasuk dirinya sendiri.
+*   Cosine similarity mengukur kosinus sudut antara dua vektor. Semakin kecil sudutnya (semakin mirip arah vektornya), semakin dekat nilainya ke 1.
+
+#### Output Hasil (`similarity`)
+*   Variabel `similarity` berisi sebuah **matriks persegi (square matrix)**.
+*   Jumlah baris dan kolom matriks ini sama dengan jumlah buku dalam dataset (misalnya, 6212 x 6212).
+*   Setiap **elemen `[i, j]`** dalam matriks ini mewakili **skor cosine similarity** antara **buku ke-`i`** dan **buku ke-`j`**.
+
+#### Interpretasi Nilai dalam Matriks (Contoh Output):
+*   **Diagonal Utama:** Semua nilai pada diagonal utama (misalnya `[0, 0]`, `[1, 1]`, ..., `[akhir, akhir]`) adalah **`1.0`**. Ini karena kemiripan sebuah buku dengan dirinya sendiri selalu sempurna (maksimal).
+*   **Elemen Lain (Off-diagonal):** Nilai-nilai lain dalam matriks (misalnya `[0, 1]` adalah `0.0907...`, `[0, 2]` adalah `0.1344...`) menunjukkan tingkat kemiripan antara **dua buku yang berbeda**.
+    *   Nilai berkisar antara **0** (tidak ada kemiripan berdasarkan fitur yang diekstraksi) hingga **1** (kemiripan sempurna).
+    *   Semakin **tinggi** nilainya (mendekati 1), semakin **mirip** kedua buku tersebut berdasarkan konten gabungan mereka (judul, kategori, penulis, tahun).
+*   **Matriks Simetris:** Nilai `similarity[i, j]` akan sama dengan `similarity[j, i]` (kemiripan buku A ke B sama dengan B ke A).
+
+#### Tujuan Keseluruhan:
+*   Matriks `similarity` ini adalah **inti** dari sistem rekomendasi berbasis konten. Matriks ini menyimpan informasi kuantitatif tentang seberapa mirip setiap pasangan buku dalam dataset.
+*   Matriks ini akan digunakan pada langkah selanjutnya untuk menemukan buku-buku yang paling mirip dengan buku yang dipilih pengguna.
 """
 
 list_of_all_titles = df['title'].tolist()
 print(list_of_all_titles)
 
-"""*   **Membuat Daftar Semua Judul:** Kode ini bertujuan untuk mengambil semua nilai dari kolom `title` dalam DataFrame `df` dan menyimpannya ke dalam sebuah **list Python standar**.
+"""Langkah ini secara spesifik mengekstrak semua judul buku dari DataFrame dan menyusunnya menjadi sebuah daftar.
+
+*   **Membuat Daftar Semua Judul:** Kode ini bertujuan untuk mengambil semua nilai dari kolom `title` dalam DataFrame `df` dan menyimpannya ke dalam sebuah **list Python standar**.
 *   **Keperluan Pencocokan:** Daftar ini (`list_of_all_titles`) akan digunakan nanti untuk **mencari kecocokan** terdekat antara judul buku yang dimasukkan oleh pengguna dengan judul yang ada di dataset (misalnya menggunakan `difflib`).
 """
 
@@ -441,23 +693,61 @@ index_of_the_book = df[df.title == close_match].index[0]
 similarity_score = list(enumerate(similarity[index_of_the_book]))
 print(similarity_score)
 
-"""*   **Mengidentifikasi Lokasi Buku Input:** Kode ini bertujuan untuk menemukan **nomor baris (indeks)** dari buku yang paling cocok (`close_match`) di dalam DataFrame `df`.
-*   **Mengambil Skor Kemiripan Terkait:** Setelah indeks ditemukan, kode ini mengambil **seluruh baris skor kemiripan** yang bersesuaian dengan buku tersebut dari matriks `similarity`. Fungsi `enumerate` digunakan untuk membuat daftar pasangan yang berisi `(indeks_buku_lain, skor_kemiripan_dengan_buku_input)`.
+"""Langkah ini bertujuan untuk mendapatkan daftar skor kemiripan antara buku yang dipilih pengguna (atau hasil pencocokan terdekat) dengan semua buku lain dalam dataset.
+
+#### Menemukan Indeks Buku Pilihan
+*   **Input:** Menggunakan `close_match` (variabel yang berisi judul buku hasil pencocokan terdekat, diasumsikan sudah didapat sebelumnya).
+*   **Proses:** Mencari baris data di DataFrame `df` di mana kolom `'title'` sama dengan `close_match`. Kemudian, mengambil **nomor baris (indeks)** dari baris tersebut.
+*   **Hasil:** Mendapatkan `index_of_the_book`, yaitu lokasi numerik (indeks) dari buku yang dipilih di dalam DataFrame dan matriks kemiripan.
+
+#### Mengekstrak dan Memasangkan Skor Kemiripan
+*   **Input:** Menggunakan `index_of_the_book` dan matriks kemiripan `similarity`.
+*   **Proses:**
+    *   Mengambil **seluruh baris** dari matriks `similarity` yang posisinya sesuai dengan `index_of_the_book`. Baris ini berisi skor kemiripan antara buku pilihan dengan *semua* buku lain (termasuk dirinya sendiri).
+    *   Menggunakan fungsi `enumerate` untuk membuat pasangan data. Setiap pasangan terdiri dari:
+        *   Nomor indeks buku lain (dari 0 hingga jumlah buku - 1).
+        *   Skor kemiripan buku tersebut dengan buku pilihan.
+*   **Hasil:** Membuat variabel `similarity_score` yang berupa **list Python**. Setiap elemen dalam list ini adalah sebuah **pasangan (tuple)** dengan format: `(indeks_buku_lain, skor_kemiripan_dengan_buku_pilihan)`.
+
+#### Menampilkan Hasil (`print`)
+*   Output `print(similarity_score)` akan menampilkan daftar pasangan skor kemiripan ini, yang siap untuk diurutkan guna menemukan buku-buku yang paling mirip.
 """
 
 # Ranking the books in descending order based on similarity scores
 sorted_similar_books = sorted(similarity_score, key = lambda x:x[1], reverse = True)
 print(sorted_similar_books)
 
-"""*   **Membuat Peringkat Rekomendasi:** Kode ini bertujuan untuk **mengurutkan** daftar buku (`similarity_score`) berdasarkan **skor kemiripannya** dengan buku input pengguna.
-*   **Prioritas Kemiripan Tertinggi:** Pengurutan dilakukan dalam urutan **menurun (`reverse=True`)**, sehingga buku-buku yang paling mirip (skor tertinggi) akan muncul di **urutan pertama** dalam daftar `sorted_similar_books`.
+"""Langkah ini mengambil daftar skor kemiripan (yang kemungkinan berisi pasangan indeks buku dan skor kemiripannya) dan mengurutkannya untuk membuat peringkat rekomendasi.
+
+#### Proses Pengurutan
+*   **Input:** Variabel `similarity_score`. Variabel ini diasumsikan berisi sebuah daftar (list), di mana setiap elemennya adalah pasangan data, kemungkinan besar seperti `(indeks_buku, skor_kemiripan_buku_tersebut)`.
+*   **Kriteria Pengurutan:** Menggunakan fungsi `sorted` dengan argumen:
+    *   `key=lambda x: x[1]`: Menentukan bahwa pengurutan harus didasarkan pada **elemen kedua** dari setiap pasangan (yaitu, **skor kemiripan**).
+    *   `reverse=True`: Menentukan bahwa pengurutan dilakukan secara **menurun**, dari nilai terbesar ke terkecil.
+
+#### Hasil Pengurutan
+*   **Output:** Variabel `sorted_similar_books` berisi daftar pasangan `(indeks_buku, skor_kemiripan)` yang **sama** seperti input, tetapi sekarang **sudah terurut**.
+*   **Urutan Prioritas:** Buku-buku yang paling mirip (memiliki skor kemiripan **tertinggi**) dengan buku referensi akan berada di **posisi teratas** (awal) dalam daftar `sorted_similar_books`.
+
+#### Tujuan
+*   **Membuat Peringkat Rekomendasi:** Menyusun daftar buku berdasarkan seberapa relevan atau miripnya mereka dengan buku yang dijadikan acuan (buku input pengguna).
+*   **Memudahkan Pengambilan Rekomendasi:** Daftar yang terurut ini memudahkan untuk mengambil sejumlah `N` buku teratas sebagai rekomendasi final yang akan ditampilkan kepada pengguna.
 """
 
 top_sim = sorted_similar_books[:5]
 top_sim
 
-"""*   **Memilih Rekomendasi Terbaik:** Kode ini bertujuan untuk mengambil **5 buku pertama** dari daftar `sorted_similar_books` yang sudah diurutkan.
-*   **Mendapatkan Top-N:** Karena daftar tersebut diurutkan berdasarkan kemiripan tertinggi, langkah ini secara efektif memilih **5 buku yang paling mirip** dengan buku input pengguna (termasuk buku input itu sendiri di posisi pertama dengan skor ~1.0) sebagai rekomendasi teratas.
+"""Langkah ini fokus pada pemilihan sejumlah kecil rekomendasi buku terbaik dari daftar yang sudah diurutkan berdasarkan kemiripan.
+
+#### Proses Seleksi (Slicing)
+*   **Sumber Data:** Menggunakan daftar `sorted_similar_books`. Daftar ini diasumsikan **sudah diurutkan sebelumnya** berdasarkan skor kemiripan (cosine similarity), dari yang tertinggi ke terendah.
+*   **Tindakan:** Kode `[:5]` melakukan **slicing** pada daftar tersebut, yaitu mengambil **irisan** yang berisi **lima elemen pertama** (dari indeks 0 hingga 4).
+*   **Hasil:** Variabel `top_sim` kini berisi sebuah list baru yang hanya terdiri dari lima elemen teratas dari `sorted_similar_books`.
+
+#### Tujuan dan Makna
+*   **Mendapatkan Top-N Rekomendasi:** Karena `sorted_similar_books` sudah diurutkan berdasarkan kemiripan, lima elemen pertama ini secara otomatis mewakili **lima buku yang paling mirip** dengan buku referensi/input pengguna.
+*   **Termasuk Buku Input:** Biasanya, elemen pertama dalam `sorted_similar_books` (dan oleh karena itu juga dalam `top_sim`) adalah buku referensi itu sendiri, karena memiliki skor kemiripan 1.0 (atau mendekati 1.0) dengan dirinya sendiri.
+*   **Rekomendasi Final (Subset):** Daftar `top_sim` ini merupakan **subset** dari semua kemungkinan buku mirip, yang dipilih sebagai rekomendasi **teratas (Top 5)** untuk disajikan kepada pengguna.
 """
 
 # Display the titles of the top similar books based on their index
@@ -470,10 +760,218 @@ for book in sorted_similar_books:
         print(i, '-', title_from_index)
         i += 1
 
-"""*   **Menyajikan Hasil Akhir:** Kode ini bertujuan untuk menampilkan **judul buku** dari **5 rekomendasi teratas** (yang sudah diurutkan berdasarkan kemiripan) kepada pengguna.
-*   **Konversi Indeks ke Judul:** Ia mengambil indeks buku dari daftar `sorted_similar_books`, mencarinya kembali di DataFrame `df` untuk mendapatkan judul aslinya, dan mencetaknya dalam format yang mudah dibaca (dengan nomor urut 1 sampai 5).
+"""Kode ini bertugas untuk menampilkan hasil rekomendasi buku kepada pengguna dalam format yang mudah dibaca, yaitu berupa daftar judul buku yang paling mirip.
+
+#### Proses Kerja:
+
+*  **Iterasi Melalui Hasil Urutan:**
+    *   Kode melakukan perulangan (`for loop`) pada `sorted_similar_books`. Diasumsikan variabel ini berisi daftar buku yang sudah **diurutkan** berdasarkan skor kemiripan tertinggi ke terendah.
+    *   Setiap elemen (`book`) dalam daftar ini kemungkinan berisi pasangan `(indeks_buku, skor_kemiripan)`.
+
+*  **Ekstraksi Indeks:**
+    *   Di dalam setiap iterasi, **indeks unik** dari buku yang mirip diekstrak (`index = book[0]`).
+
+*  **Pencarian Judul:**
+    *   Indeks yang didapat digunakan untuk **mencari kembali** baris yang sesuai dalam DataFrame asli (`df`).
+    *   Dari baris yang ditemukan, **nilai kolom 'title' (judul)** diambil (`df[df.index==index]['title'].values[0]`).
+
+*  **Pembatasan dan Tampilan Hasil:**
+    *   Sebuah **kondisi (`if i < 6`)** digunakan untuk **membatasi** jumlah output hanya **5 judul teratas**.
+    *   Sebuah **penghitung (`i`)** digunakan untuk memberi nomor urut pada hasil.
+    *   Jika kondisi terpenuhi (kurang dari 5 judul sudah ditampilkan), **nomor urut (`i`)** dan **judul buku (`title_from_index`)** dicetak ke layar.
+    *   Penghitung `i` ditambahkan satu (`i += 1`) untuk iterasi selanjutnya.
+
+### K-Means
+"""
+
+clustering_features_cols = ['average_rating', 'num_pages', 'ratings_count']
+
+"""#### Isi Variabel:
+*   Variabel ini berisi sebuah **`list`** yang mencantumkan nama-nama kolom spesifik dari DataFrame:
+    *   `'average_rating'` (Rata-rata Rating)
+    *   `'num_pages'` (Jumlah Halaman)
+    *   `'ratings_count'` (Jumlah Pemberi Rating)
+
+#### Tujuan:
+*   **Pemilihan Fitur:** Daftar ini secara eksplisit **memilih kolom-kolom** yang akan digunakan sebagai **fitur input** untuk **algoritma clustering** (misalnya K-Means).
+*   **Karakteristik Kuantitatif:** Kolom-kolom yang dipilih bersifat **kuantitatif (numerik)** dan mewakili **karakteristik buku** yang berbeda (seperti rata-rata rating, jumlah halaman, dan jumlah pemberi rating/popularitas).
+*   **Dasar Pengelompokan:** Nilai-nilai dari kolom-kolom inilah yang akan dianalisis oleh algoritma clustering untuk mencoba **menemukan kelompok-kelompok (cluster)** alami dalam data buku berdasarkan kesamaan karakteristik kuantitatif tersebut.
+
+"""
+
+# Prepare features for K-means clustering (Scale data)
+def features_for_clustering(df, feature_cols):
+    scaler = RobustScaler()
+    try:
+        # Select only the specified numeric columns
+        numeric_data = df[feature_cols].copy()
+        # Check for and handle potential infinite values before scaling
+        numeric_data.replace([np.inf, -np.inf], np.nan, inplace=True)
+        # Check for NaNs *after* replacing infs
+        if numeric_data.isnull().any().any():
+             print(f"Warning: NaNs found in features before scaling: \n{numeric_data.isnull().sum()}")
+             # Simple imputation with median for demonstration, adjust if needed
+             for col in feature_cols:
+                 if numeric_data[col].isnull().any():
+                     median_val = numeric_data[col].median()
+                     numeric_data[col].fillna(median_val, inplace=True)
+                     print(f"  Filled NaNs in '{col}' with median: {median_val}")
+
+        numeric_data_scaled = scaler.fit_transform(numeric_data)
+        print(f"Using numeric features for clustering: {feature_cols}")
+        print(f"Number of features used: {len(feature_cols)}")
+        return numeric_data_scaled
+    except KeyError as e:
+        print(f"Error: Column not found in DataFrame - {e}")
+        return None
+    except Exception as e:
+        print(f"Error during feature scaling: {e}")
+        return None
+
+print("\nPreparing features for clustering...")
+# Make sure 'df' is your cleaned DataFrame from previous steps
+if 'df' in locals() and isinstance(df, pd.DataFrame):
+    clustering_features_scaled = features_for_clustering(df, clustering_features_cols)
+    if clustering_features_scaled is not None:
+        print("Features prepared successfully.")
+        print(f"Shape of clustering features: {clustering_features_scaled.shape}")
+    else:
+        print("Feature preparation failed.")
+else:
+    print("Error: DataFrame 'df' not found or is not a DataFrame.")
+    clustering_features_scaled = None
+
+"""Kode ini menyiapkan fitur numerik dari DataFrame (`df`) untuk clustering menggunakan `RobustScaler`.
+
+#### Fungsi `features_for_clustering`:
+1.  **Input:** DataFrame `df` dan daftar kolom numerik (`feature_cols`).
+2.  **Scaling:** Menggunakan `RobustScaler` (tahan outlier).
+3.  **Seleksi:** Memilih kolom dalam `feature_cols`.
+4.  **Pembersihan:** Mengganti nilai `inf` menjadi `NaN`, lalu mengisi `NaN` yang tersisa dengan median kolom.
+5.  **Transformasi:** Melakukan scaling data.
+6.  **Output:** Mengembalikan data yang sudah di-scaling atau `None` jika error.
+
+#### Kode Pemanggil:
+*   Memastikan `df` ada, lalu memanggil fungsi `features_for_clustering`.
+*   Menampilkan pesan sukses/gagal dan bentuk data hasil scaling.
+
+---
+
+#### Hasil Output:
+Output mengonfirmasi bahwa tiga fitur numerik ('average\_rating', 'num\_pages', 'ratings\_count') berhasil dipilih dan di-scaling untuk 6212 buku, menghasilkan data berdimensi (6212, 3) yang siap untuk clustering.
+"""
+
+def find_and_plot_optimal_k(features, max_k=10):
+    if features is None:
+        print("Cannot find optimal k without features.")
+        return None
+
+    inertias = []
+    silhouette_scores = []
+    k_range = range(2, max_k + 1)
+
+    print(f"\nCalculating scores for k=2 to k={max_k}...")
+    for k in k_range:
+        # Apply K-Means for the current k
+        kmeans_analysis = KMeans(n_clusters=k, random_state=42, n_init=10)
+        kmeans_analysis.fit(features)
+        inertias.append(kmeans_analysis.inertia_)
+
+        # Calculate Silhouette Score
+        # Note: Can be slow for large datasets. Consider sampling if needed.
+        score = silhouette_score(features, kmeans_analysis.labels_)
+        silhouette_scores.append(score)
+        print(f"  k={k}: Inertia={kmeans_analysis.inertia_:.2f}, Silhouette={score:.3f}")
+
+    # Plot elbow curve (Inertia)
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5)) # Create figure with two subplots
+
+    ax1.plot(k_range, inertias, 'bo-')
+    ax1.set_xlabel('Number of Clusters (k)')
+    ax1.set_ylabel('Inertia (Within-Cluster Sum of Squares)')
+    ax1.set_title('Elbow Method for Optimal k')
+    ax1.grid(True)
+
+    # Plot Silhouette Scores
+    ax2.plot(k_range, silhouette_scores, 'ro-')
+    ax2.set_xlabel('Number of Clusters (k)')
+    ax2.set_ylabel('Silhouette Score')
+    ax2.set_title('Silhouette Analysis for Optimal k')
+    ax2.grid(True)
+
+    plt.tight_layout()
+    plt.show()
+
+    # Find k with the highest silhouette score
+    if silhouette_scores: # Check if list is not empty
+        optimal_k_silhouette = k_range[np.argmax(silhouette_scores)]
+        print(f"\nOptimal k suggested by highest Silhouette Score: {optimal_k_silhouette}")
+        return optimal_k_silhouette
+    else:
+        print("\nCould not determine optimal k from silhouette scores.")
+        return None # Or a default value like 2
+
+
+# Call the function to plot Elbow and Silhouette, but don't use its return value for final k
+if clustering_features_scaled is not None:
+    # Calculate and plot scores, store the suggested optimal k if needed for comparison
+    suggested_optimal_k = find_and_plot_optimal_k(clustering_features_scaled, max_k=10)
+else:
+    print("Skipping optimal k analysis due to feature preparation error.")
+
+"""Visualisasi ini menggunakan dua metode untuk membantu menentukan jumlah cluster (k) yang paling baik untuk algoritma K-Means berdasarkan data fitur yang telah disiapkan:
+
+**1. Elbow Method (Grafik Kiri - Biru):**
+*   **Metode:** Menampilkan penurunan nilai *Inertia* (Within-Cluster Sum of Squares/WCSS) seiring penambahan jumlah cluster (k). Kita mencari titik "siku" (elbow) di mana penurunan mulai melambat secara signifikan, menandakan penambahan cluster selanjutnya tidak lagi memberikan pengurangan varians internal yang berarti.
+*   **Observasi:** Grafik menunjukkan penurunan tajam dari k=2 ke k=3 dan k=4, kemudian penurunan menjadi lebih landai setelahnya.
+
+**2. Silhouette Analysis (Grafik Kanan - Merah):**
+*   **Metode:** Menampilkan rata-rata *Silhouette Score* untuk setiap nilai k. Skor ini mengukur seberapa baik sebuah data dikelompokkan dalam clusternya sendiri dibandingkan dengan cluster lain (nilai lebih tinggi, mendekati 1, berarti pemisahan cluster lebih baik dan lebih padat).
+*   **Observasi:** Skor Silhouette tertinggi dicapai pada **k=2** dan **k=3**, dengan penurunan signifikan setelah k=3.
+
+**Kesimpulan Rekomendasi:**
+*   Berdasarkan kombinasi kedua metode, **k=2** tampak sebagai pilihan jumlah cluster yang paling optimal untuk data ini. Nilai ini menunjukkan keseimbangan antara varians dalam cluster yang cukup rendah dan pemisahan antar cluster yang baik (skor Silhouette tinggi sebelum terjadi penurunan drastis).
+"""
+
+optimal_k = 2
+print(f"\nUsing fixed number of clusters for final model: k={optimal_k}")
+
+# Apply K-means with the explicitly chosen k=3
+if clustering_features_scaled is not None:
+    print(f"Applying K-Means with k={optimal_k}...")
+    kmeans = KMeans(n_clusters=optimal_k, random_state=42, n_init=10)
+    cluster_labels = kmeans.fit_predict(clustering_features_scaled)
+
+    # Add cluster labels to the original dataframe
+    df['cluster'] = cluster_labels
+    print("Cluster labels added to DataFrame.")
+else:
+    print("Skipping K-Means application due to feature preparation error.")
+
+"""Kode ini menjalankan algoritma K-Means pada data fitur yang sudah disiapkan (`clustering_features_scaled`) dengan jumlah cluster yang sudah ditentukan secara eksplisit.
+
+#### Proses Kerja Kode:
+1.  **Penetapan `k`:** Jumlah cluster (`optimal_k`) ditetapkan secara manual menjadi **2**.
+2.  **Pengecekan Fitur:** Memastikan data fitur (`clustering_features_scaled`) sudah berhasil disiapkan sebelumnya.
+3.  **Inisialisasi K-Means:** Membuat objek `KMeans` dengan:
+    *   `n_clusters=2`: Menentukan 2 cluster.
+    *   `random_state=42`: Memastikan hasil clustering konsisten jika dijalankan ulang.
+    *   `n_init=10`: Menjalankan algoritma 10 kali dengan titik awal berbeda untuk hasil yang lebih stabil.
+4.  **Pelatihan & Prediksi:** Menggunakan `fit_predict` untuk:
+    *   Melatih model K-Means pada data fitur.
+    *   Menentukan label cluster (0 atau 1) untuk setiap titik data (buku).
+5.  **Penambahan Label ke DataFrame:** Menambahkan hasil label cluster sebagai kolom baru bernama `'cluster'` ke DataFrame asli (`df`).
+
+---
+
+#### Penjelasan Hasil Output:
+*   Output mengonfirmasi bahwa **`k=2`** dipilih sebagai jumlah cluster tetap untuk model final.
+*   Selanjutnya, output menunjukkan bahwa **algoritma K-Means berhasil dijalankan** dengan `k=2` pada data fitur.
+*   Terakhir, output mengonfirmasi bahwa **label cluster (0 atau 1) telah berhasil ditambahkan** sebagai kolom baru ke dalam DataFrame `df`, sehingga setiap buku kini memiliki penanda clusternya.
 
 ## Evaluasi
+
+### Cosine Similarity Evaluation
 """
 
 # Evaluation Functions
@@ -561,133 +1059,505 @@ test_books = [
 # Run Evaluation
 evaluate_recommendations(test_books)
 
-"""#### Evaluasi Sistem Rekomendasi
+"""#### Penjelasan Kode:
+1.  **Fungsi `recommend`**:
+    *   Menerima judul buku sebagai input.
+    *   Mencari judul yang paling mirip dalam data menggunakan `difflib`.
+    *   Mengambil skor kemiripan (cosine similarity) buku yang cocok tersebut terhadap semua buku lain dari matriks `similarity`.
+    *   Mengurutkan buku berdasarkan skor kemiripan tertinggi.
+    *   Mengembalikan 5 buku teratas (tidak termasuk buku input itu sendiri).
+2.  **Fungsi Evaluasi**:
+    *   `evaluate_recommendations`: Menjalankan fungsi `recommend` untuk setiap buku dalam daftar `test_books` dan memanggil fungsi evaluasi lainnya.
+    *   `display_recommendations`: Menampilkan detail 5 rekomendasi teratas (judul, penulis, kategori, tahun, skor kemiripan).
+    *   `analyze_similarity_scores`: Menghitung rata-rata & skor kemiripan tertinggi *dari rekomendasi terhadap buku input*.
+    *   `evaluate_diversity`: Menghitung rata-rata kemiripan *antar buku dalam daftar rekomendasi* (Intra-List Similarity) untuk mengukur keberagaman. Memberi tanda (✅/⚠️) berdasarkan skor ini.
+3.  **Eksekusi**: Kode mendefinisikan daftar `test_books` dan menjalankan `evaluate_recommendations` untuk mengevaluasi & menampilkan hasil rekomendasi untuk setiap buku dalam daftar tersebut.
 
-1.  **`recommend(book_name, return_results=False)`:**
-    *   **Tujuan:** Fungsi `recommend` ini dimodifikasi sedikit dari versi sebelumnya.
-    *   **Fungsi Utama:** Masih mencari buku yang paling cocok dengan input pengguna dan menghasilkan 5 rekomendasi teratas berdasarkan `cosine_similarity`.
-    *   **Fitur Tambahan:**
-        *   Menampilkan judul buku yang paling cocok ditemukan (`Closest match found`).
-        *   Memiliki parameter `return_results` (jika `True`), fungsi ini akan **mengembalikan** daftar rekomendasi (indeks dan skor) alih-alih mencetaknya langsung. Ini memungkinkan fungsi evaluasi lain untuk menggunakan data mentah ini.
-        *   Jika `return_results` adalah `False` (atau tidak disetel), ia akan mencetak detail rekomendasi (judul, penulis, kategori, tahun, skor kemiripan).
+---
 
-2.  **`evaluate_recommendations(book_titles)`:**
-    *   **Tujuan:** Fungsi utama untuk menjalankan proses evaluasi pada sekumpulan judul buku.
-    *   **Proses:**
-        *   Iterasi melalui setiap `title` dalam daftar `book_titles`.
-        *   Memanggil `recommend(title, return_results=True)` untuk mendapatkan data rekomendasi mentah.
-        *   Jika rekomendasi ditemukan, ia memanggil fungsi-fungsi evaluasi lainnya:
-            *   `display_recommendations()`: Menampilkan detail rekomendasi.
-            *   `analyze_similarity_scores()`: Menghitung & menampilkan skor kemiripan rata-rata dan tertinggi.
-            *   `evaluate_diversity()`: Menghitung & menampilkan skor keragaman (intra-list similarity).
+#### Penjelasan Hasil Output:
+Output menunjukkan hasil evaluasi rekomendasi untuk 5 buku uji:
+*   Untuk **setiap buku uji**:
+    *   Menampilkan judul input dan judul paling mirip yang ditemukan.
+    *   Menampilkan **5 rekomendasi teratas** beserta detail (judul, penulis, dll.) dan **skor kemiripannya** dengan buku input.
+    *   Menampilkan **rata-rata & skor tertinggi** kemiripan rekomendasi terhadap input.
+    *   Menampilkan **rata-rata kemiripan antar rekomendasi** (Intra-List Similarity) dan memberikan penilaian keberagaman (✅=baik).
+*   **Secara keseluruhan**: Output mendemonstrasikan kemampuan model untuk menemukan kecocokan judul, memberikan rekomendasi yang relevan (berdasarkan skor similarity), dan menunjukkan bahwa rekomendasi yang dihasilkan cenderung **beragam** (skor intra-list rendah, ditandai ✅) untuk semua buku uji.
 
-3.  **`display_recommendations(recommendations)`:**
-    *   **Tujuan:** Menampilkan hasil rekomendasi dengan lebih detail (termasuk penulis, kategori, tahun) beserta skor kemiripan Cosine.
-
-4.  **`analyze_similarity_scores(recommendations)`:**
-    *   **Tujuan:** Mengevaluasi seberapa mirip rekomendasi yang dihasilkan dengan buku input asli, menurut metrik sistem (Cosine Similarity).
-    *   **Metrik:** Menghitung skor kemiripan rata-rata dan skor kemiripan tertinggi dari 5 rekomendasi teratas.
-
-5.  **`evaluate_diversity(recommendations)`:**
-    *   **Tujuan:** Mengevaluasi seberapa beragam rekomendasi yang diberikan satu sama lain.
-    *   **Metrik:** Menghitung rata-rata Cosine Similarity *antar* buku dalam daftar rekomendasi (Intra-List Similarity). Skor tinggi menunjukkan kurangnya keragaman.
-
-6.  **`test_books`:**
-    *   **Tujuan:** Sebuah daftar berisi beberapa judul buku yang dipilih untuk dijadikan input pengujian sistem rekomendasi.
-
-7.  **`evaluate_recommendations(test_books)`:**
-    *   **Tujuan:** Mengeksekusi seluruh alur evaluasi menggunakan daftar `test_books` sebagai input.
-
-**Kesimpulan:** Blok kode ini menyediakan kerangka kerja untuk menguji sistem rekomendasi pada beberapa contoh input dan menganalisis kualitas outputnya berdasarkan metrik kemiripan (relevansi internal) dan keragaman.
-
-### Interpretasi
+### Cluster Evaluation
 """
 
-def recommend(book_name):
-    # Find closest matching book title
-    matches = difflib.get_close_matches(book_name, df['title'], n=1, cutoff=0.6)
-    if not matches:
-        print("Book not found. Please check the spelling.")
+# Evaluate clustering performance
+def evaluate_clustering(features, labels):
+    n_clusters = len(np.unique(labels))
+    if n_clusters < 2:
+        print("\nNot enough clusters to evaluate.")
+        silhouette_avg = "N/A"
+        davies_score = "N/A"
+        try:
+            calinski_score = calinski_harabasz_score(features, labels)
+        except ValueError:
+            calinski_score = "N/A"
+    else:
+        silhouette_avg = silhouette_score(features, labels)
+        calinski_score = calinski_harabasz_score(features, labels)
+        davies_score = davies_bouldin_score(features, labels)
+
+    print("\nClustering Metrics:")
+    print(f"  Clusters: {n_clusters}")
+    print(f"  Silhouette: {silhouette_avg:.3f}" if isinstance(silhouette_avg, (int, float)) else f"  Silhouette: {silhouette_avg}")
+    print(f"  Calinski-Harabasz: {calinski_score:.3f}" if isinstance(calinski_score, (int, float)) else f"  Calinski-Harabasz: {calinski_score}")
+    print(f"  Davies-Bouldin: {davies_score:.3f}" if isinstance(davies_score, (int, float)) else f"  Davies-Bouldin: {davies_score}")
+
+    # Print cluster sizes
+    cluster_sizes = pd.Series(labels).value_counts().sort_index()
+    print("\nCluster Sizes:")
+    for cluster, size in cluster_sizes.items():
+        percentage = (size / len(df)) * 100
+        print(f"  Cluster {cluster}: {size} items ({percentage:.1f}%)")
+
+# Run evaluation
+if clustering_features_scaled is not None and 'cluster' in df.columns:
+    evaluate_clustering(clustering_features_scaled, df['cluster'])
+else:
+    print("Skipping evaluation.")
+
+# Visualize clusters
+def visualize_clusters(features, labels):
+    """
+    PCA-based 2D cluster plot
+    """
+    n_clusters = len(np.unique(labels))
+    if n_clusters < 2:
+        print("\nNot enough clusters to visualize.")
         return
 
-    # Confirm the matched book
-    close_match = matches[0]
-    print(f"\nYou searched for: '{book_name}'")
-    print(f"Closest match found: '{close_match}'\n")
+    pca = PCA(n_components=2)
+    coords = pca.fit_transform(features)
 
-    # Get recommendations
-    index = df[df['title'] == close_match].index[0]
-    similar_books = enumerate(similarity[index])
+    plt.figure(figsize=(12, 8))
+    scatter = plt.scatter(coords[:, 0], coords[:, 1],
+                          c=labels,
+                          cmap='viridis',
+                          alpha=0.6)
+
+    legend_labels = [f'Cluster {i}' for i in range(n_clusters)]
+    plt.legend(handles=scatter.legend_elements()[0], labels=legend_labels, title="Clusters")
+    plt.title(f'Cluster Visualization (k={n_clusters})')
+    plt.xlabel('PCA 1')
+    plt.ylabel('PCA 2')
+    plt.grid(True, linestyle='--', alpha=0.5)
+    plt.show()
+
+# Show visualization
+if clustering_features_scaled is not None and 'cluster' in df.columns:
+    visualize_clusters(clustering_features_scaled, df['cluster'])
+else:
+    print("Skipping visualization.")
+
+"""#### Penjelasan Kode:
+1.  **Fungsi `recommend`**:
+    *   Menerima judul buku sebagai input.
+    *   Mencari judul yang paling mirip dalam data menggunakan `difflib`.
+    *   Mengambil skor kemiripan (cosine similarity) buku yang cocok tersebut terhadap semua buku lain dari matriks `similarity`.
+    *   Mengurutkan buku berdasarkan skor kemiripan tertinggi.
+    *   Mengembalikan 5 buku teratas (tidak termasuk buku input itu sendiri).
+2.  **Fungsi Evaluasi**:
+    *   `evaluate_recommendations`: Menjalankan fungsi `recommend` untuk setiap buku dalam daftar `test_books` dan memanggil fungsi evaluasi lainnya.
+    *   `display_recommendations`: Menampilkan detail 5 rekomendasi teratas (judul, penulis, kategori, tahun, skor kemiripan).
+    *   `analyze_similarity_scores`: Menghitung rata-rata & skor kemiripan tertinggi *dari rekomendasi terhadap buku input*.
+    *   `evaluate_diversity`: Menghitung rata-rata kemiripan *antar buku dalam daftar rekomendasi* (Intra-List Similarity) untuk mengukur keberagaman. Memberi tanda (✅/⚠️) berdasarkan skor ini.
+3.  **Eksekusi**: Kode mendefinisikan daftar `test_books` dan menjalankan `evaluate_recommendations` untuk mengevaluasi & menampilkan hasil rekomendasi untuk setiap buku dalam daftar tersebut.
+
+---
+
+#### Penjelasan Hasil Output:
+Output menunjukkan hasil evaluasi rekomendasi untuk 5 buku uji:
+*   Untuk **setiap buku uji**:
+    *   Menampilkan judul input dan judul paling mirip yang ditemukan.
+    *   Menampilkan **5 rekomendasi teratas** beserta detail (judul, penulis, dll.) dan **skor kemiripannya** dengan buku input.
+    *   Menampilkan **rata-rata & skor tertinggi** kemiripan rekomendasi terhadap input.
+    *   Menampilkan **rata-rata kemiripan antar rekomendasi** (Intra-List Similarity) dan memberikan penilaian keberagaman (✅=baik).
+*   **Secara keseluruhan**: Output mendemonstrasikan kemampuan model untuk menemukan kecocokan judul, memberikan rekomendasi yang relevan (berdasarkan skor similarity), dan menunjukkan bahwa rekomendasi yang dihasilkan cenderung **beragam** (skor intra-list rendah, ditandai ✅) untuk semua buku uji.
+"""
+
+# Function to Display Sample Representatives from Each Cluster
+def display_cluster_samples(df, num_samples=3):
+    print("\n Sample Books Representing Each Cluster ")
+
+    if 'cluster' not in df.columns:
+        print("Error: 'cluster' column not found in DataFrame.")
+        return
+
+    # Ensure cluster labels are sorted for consistent output (Cluster 1, Cluster 2)
+    unique_cluster_labels = sorted(df['cluster'].unique())
+
+    for cluster_label in unique_cluster_labels:
+        # Filter the DataFrame for the current cluster
+        cluster_df = df[df['cluster'] == cluster_label].copy()
+
+        # Determine how many samples to show (handle small clusters)
+        n_to_sample = min(num_samples, len(cluster_df))
+
+        # Display cluster header (using Cluster 1, Cluster 2 naming)
+        print(f"\n Cluster {cluster_label + 1} (Showing {n_to_sample} samples) ")
+
+        if n_to_sample == 0:
+            print("  No books found in this cluster.")
+            continue
+
+        # Get random samples
+        # Use a fixed random_state if you want the same samples each time you run
+        samples = cluster_df.sample(n=n_to_sample, random_state=42)
+
+        # Display details for each sample book
+        for index, book_info in samples.iterrows():
+            print(f"  - Title: {book_info['title']}")
+            print(f"    Authors: {book_info['authors']}")
+            print(f"    Categories: {book_info['categories']}")
+            print(f"    Published Year: {book_info['published_year']}")
+            print(f"    Average Rating: {book_info['average_rating']:.1f}")
+            print(f"    Pages: {book_info['num_pages']}")
+            print(f"    Ratings Count: {book_info['ratings_count']}")
+            print("-" * 20) # Separator between books
+
+    print("\n End of Sample Display ")
+
+
+# Show Sample Representatives
+display_cluster_samples(df, num_samples=3)
+
+"""#### Penjelasan Kode:
+1.  **Fungsi `evaluate_clustering`**:
+    *   Menghitung metrik evaluasi clustering:
+        *   **Silhouette Score**: Mengukur seberapa mirip objek dengan clusternya sendiri dibandingkan cluster lain (nilai lebih tinggi, mendekati 1, lebih baik).
+        *   **Calinski-Harabasz Index**: Rasio antara varians antar-cluster dan varians intra-cluster (nilai lebih tinggi lebih baik).
+        *   **Davies-Bouldin Index**: Rata-rata kemiripan antar cluster (nilai lebih rendah lebih baik).
+    *   Menghitung dan menampilkan ukuran (jumlah item & persentase) untuk setiap cluster.
+2.  **Fungsi `visualize_clusters`**:
+    *   Menggunakan **PCA (Principal Component Analysis)** untuk mengurangi dimensi fitur menjadi 2D agar bisa divisualisasikan.
+    *   Membuat **scatter plot** dari data yang sudah direduksi dimensinya.
+    *   Memberi **warna** pada titik data sesuai dengan label clusternya.
+    *   Menampilkan legenda, judul, dan grid pada plot.
+3.  **Eksekusi**: Kode memanggil kedua fungsi di atas untuk mengevaluasi performa clustering dengan k=2 dan menampilkannya secara visual.
+
+---
+
+#### Penjelasan Hasil Output:
+*   **Metrik Clustering**:
+    *   Menunjukkan hasil clustering dengan **2 cluster**.
+    *   **Silhouette (0.976)**: Sangat tinggi, mengindikasikan pemisahan antar cluster yang sangat baik dan kepadatan dalam cluster yang baik.
+    *   **Calinski-Harabasz (10063.465)**: Sangat tinggi, mendukung adanya struktur cluster yang jelas.
+    *   **Davies-Bouldin (0.353)**: Relatif rendah, juga menunjukkan pemisahan cluster yang baik.
+*   **Ukuran Cluster**:
+    *   Terjadi **ketidakseimbangan ukuran yang ekstrim**: Cluster 0 berisi hampir semua data (99.7%), sedangkan Cluster 1 sangat kecil (0.3%).
+
+---
+
+#### Penjelasan Visual (Grafik):
+*   Grafik menampilkan **visualisasi 2D (hasil PCA)** dari dua cluster yang terbentuk.
+*   **Cluster 0 (Ungu Tua)**: Terlihat sebagai kelompok **besar dan padat** di sisi kiri plot.
+*   **Cluster 1 (Kuning Terang)**: Terlihat sebagai kelompok **kecil dan tersebar** di sisi kanan plot.
+*   **Kesimpulan Visual**: Plot secara visual **mengonfirmasi pemisahan yang jelas** antara dua cluster, namun juga menegaskan **ketidakseimbangan ukuran** yang signifikan seperti yang ditunjukkan oleh output numerik.
+
+### Evaluation for Hybrid Recommendation
+"""
+
+def analyze_cbf_scores(recommendations_data):
+    if not recommendations_data:
+        print("  No recommendations to analyze scores for.")
+        return
+
+    scores = [score for _, score in recommendations_data]
+    avg_similarity = np.mean(scores)
+    max_similarity = np.max(scores)
+
+    print(f"  Average CBF Similarity Score: {avg_similarity:.3f}")
+    print(f"  Highest CBF Similarity Score: {max_similarity:.3f}")
+
+def calculate_cbf_diversity(recommendations_data, feature_vectors):
+    """Calculates and prints CBF intra-list similarity (lower is more diverse)."""
+    # recommendations_data is a list of tuples: (index, score)
+    if len(recommendations_data) < 2:
+        print("  Not enough recommendations to calculate diversity.")
+        return 0.0 # Or handle as appropriate
+
+    rec_indices = [index for index, _ in recommendations_data]
+    rec_vectors = feature_vectors[rec_indices]
+
+    # Calculate pairwise similarity within the recommendation list
+    intra_list_similarity_matrix = cosine_similarity(rec_vectors)
+
+    # Summing upper triangle (excluding diagonal) and dividing by number of pairs
+    n = len(rec_indices)
+    upper_triangle_sum = np.triu(intra_list_similarity_matrix, k=1).sum()
+    num_pairs = n * (n - 1) / 2
+    avg_intra_list_similarity = upper_triangle_sum / num_pairs if num_pairs > 0 else 0
+
+    print(f"  CBF Intra-List Similarity (Diversity Metric): {avg_intra_list_similarity:.3f} (Lower is more diverse)")
+    return avg_intra_list_similarity
+
+def analyze_cluster_alignment(input_cluster_label, recommendations_data, df):
+    """Analyzes how many recommendations are in the same cluster as the input."""
+    # recommendations_data is a list of tuples: (index, score)
+    if not recommendations_data:
+        print("  No recommendations to analyze cluster alignment for.")
+        return
+
+    same_cluster_count = 0
+    total_recs = len(recommendations_data)
+
+    for index, _ in recommendations_data:
+        rec_cluster_label = df.loc[index, 'cluster']
+        if rec_cluster_label == input_cluster_label:
+            same_cluster_count += 1
+
+    diff_cluster_count = total_recs - same_cluster_count
+    same_cluster_percent = (same_cluster_count / total_recs) * 100 if total_recs > 0 else 0
+
+    print(f"  Cluster Alignment:")
+    print(f"    - Input Book Cluster: {input_cluster_label}")
+    print(f"    - Recommendations in same cluster: {same_cluster_count}/{total_recs} ({same_cluster_percent:.1f}%)")
+    print(f"    - Recommendations in different clusters: {diff_cluster_count}/{total_recs}")
+
+
+# Main Combined Evaluation Function
+def evaluate_combined_recommendations(book_name, df, similarity_matrix, feature_vectors, n_recommendations=5):
+
+    print(f" Evaluating Recommendations for: '{book_name}' ")
+
+    # Find the closest match for the input book title
+    matches = difflib.get_close_matches(book_name, list_of_all_titles, n=1, cutoff=0.6)
+    if not matches:
+        print("  Book not found in dataset.\n")
+        return
+
+    close_match = matches[0]
+    print(f"  Closest match found: '{close_match}'")
 
     try:
-        # Get user input for number of recommendations
-        n_recommendations = int(input("Enter the number of recommendations desired: "))
-        if n_recommendations < 1:
-            raise ValueError("Number must be at least 1")
-    except ValueError as e:
-        print(f"Invalid input: {e}")
+        # Get the index and cluster label of the input book
+        index_of_the_book = df[df.title == close_match].index[0]
+        input_cluster_label = df.loc[index_of_the_book, 'cluster']
+
+        # Get similarity scores for the input book
+        similarity_scores = list(enumerate(similarity_matrix[index_of_the_book]))
+
+        # Sort books based on similarity (descending)
+        sorted_similar_books = sorted(similarity_scores, key=lambda x: x[1], reverse=True)
+
+        # recommendations_data contains tuples of (index, similarity_score)
+        recommendations_data = sorted_similar_books[1 : n_recommendations + 1]
+
+        if not recommendations_data:
+             print("  No similar books found for recommendation.")
+             print("-" * 40 + "\n")
+             return
+
+        print(f"\n  Top {len(recommendations_data)} CBF Recommendations & Cluster Info:")
+        for i, (rec_index, score) in enumerate(recommendations_data):
+            rec_title = df.loc[rec_index, 'title']
+            rec_cluster = df.loc[rec_index, 'cluster']
+            print(f"    {i+1}. Title: {rec_title} (Cluster: {rec_cluster}, CBF Score: {score:.3f})")
+
+        # Evaluation Metrics
+        print("\n  Evaluation:")
+        # CBF Quality/Relevance
+        analyze_cbf_scores(recommendations_data)
+
+        # CBF Diversity
+        calculate_cbf_diversity(recommendations_data, feature_vectors)
+
+        # Cluster Alignment
+        analyze_cluster_alignment(input_cluster_label, recommendations_data, df)
+
+    except IndexError:
+         print(f"  Error processing book: '{close_match}'. Index might be out of bounds.")
+    except Exception as e:
+        print(f"  An unexpected error occurred for '{close_match}': {e}")
+
+    print("-" * 40 + "\n")
+
+
+#  Run Evaluation on Test Books
+test_books = ["habbit", "gilead", "fahrenheit 451", "the hobbit or there and back again"]
+
+for book in test_books:
+    evaluate_combined_recommendations(book, df, similarity, feature_vectors, n_recommendations=5)
+
+"""#### Penjelasan Kode:
+1.  **Fungsi Pembantu Evaluasi:**
+    *   `analyze_cbf_scores`: Menghitung rata-rata & skor kemiripan (CBF) tertinggi dari rekomendasi *terhadap buku input*.
+    *   `calculate_cbf_diversity`: Menghitung rata-rata kemiripan *antar rekomendasi* (Intra-List Similarity) untuk mengukur keberagaman (nilai lebih rendah lebih beragam).
+    *   `analyze_cluster_alignment`: Membandingkan label cluster buku input dengan label cluster buku-buku rekomendasi, lalu menghitung persentasenya.
+2.  **Fungsi Utama `evaluate_combined_recommendations`**:
+    *   Menerima judul buku input.
+    *   Mencari judul paling mirip di data.
+    *   Mendapatkan **indeks** dan **label cluster** buku input.
+    *   Mengambil **Top 5 rekomendasi CBF** (berdasarkan `similarity_matrix`).
+    *   Menampilkan **detail rekomendasi** (Judul, **Cluster**, Skor CBF).
+    *   Memanggil **ketiga fungsi pembantu evaluasi** (`analyze_cbf_scores`, `calculate_cbf_diversity`, `analyze_cluster_alignment`).
+3.  **Eksekusi**: Kode menjalankan `evaluate_combined_recommendations` untuk setiap buku dalam daftar `test_books`.
+
+---
+
+#### Penjelasan Hasil Output:
+Output menunjukkan hasil evaluasi gabungan untuk 4 buku uji:
+*   Untuk **setiap buku uji**:
+    *   Menampilkan judul input dan kecocokan terdekat yang ditemukan.
+    *   Menampilkan **5 rekomendasi teratas** beserta **label cluster** masing-masing dan **skor kemiripan CBF**-nya.
+    *   Menampilkan **evaluasi CBF**: Skor rata-rata/tertinggi (relevansi) dan Intra-List Similarity (keberagaman).
+    *   Menampilkan **evaluasi Keselarasan Cluster**: Persentase rekomendasi yang berasal dari cluster yang sama dengan buku input.
+*   **Contoh Interpretasi**:
+    *   Untuk "habbit" (match: 'babbitt', Cluster 0): Semua 5 rekomendasi berasal dari Cluster 0 (100% selaras).
+    *   Untuk "gilead" (Cluster 0): Semua 5 rekomendasi berasal dari Cluster 0 (100% selaras).
+    *   Untuk "fahrenheit 451" (Cluster 0): Semua 5 rekomendasi berasal dari Cluster 0 (100% selaras).
+    *   Untuk "the hobbit or there and back again" (Cluster 1): **Tidak ada** rekomendasi (0%) yang berasal dari Cluster 1, semuanya dari Cluster 0.
+*   **Kesimpulan**: Output ini menunjukkan tidak hanya kualitas rekomendasi CBF (relevansi & keberagaman) tetapi juga **bagaimana rekomendasi tersebut tersebar di antara cluster yang ada**, memberikan wawasan tambahan tentang struktur data dan perilaku model rekomendasi. Terlihat bahwa untuk buku di Cluster 1, rekomendasi CBF cenderung berasal dari Cluster 0 yang dominan.
+
+### Interpretasi
+
+#### 2 Cluster
+"""
+
+# Function to Recommend with Cluster Info
+def recommend_with_cluster_info(book_name):
+    matches = difflib.get_close_matches(book_name, list_of_all_titles, n=1, cutoff=0.6)
+    if not matches:
+        print(f"Book '{book_name}' not found or no close match in the dataset. Please check the spelling.")
         return
 
-    # Sort and select top recommendations (excluding the input book itself)
-    sorted_books = sorted(similar_books, key=lambda x: x[1], reverse=True)[1:n_recommendations+1]
+    close_match = matches[0]
+    print(f"\nYou searched for: '{book_name}'")
+    print(f"Closest match found: '{close_match}'")
 
-    # Display results with full details
-    print(f"Top {n_recommendations} Recommendations:")
-    for idx, score in sorted_books:
-        book_info = df.loc[idx, [
-            'title',
-            'authors',
-            'categories',
-            'published_year',
-            'average_rating',
-            'num_pages',
-            'ratings_count'
-        ]]
-        print(f"- Title: {book_info['title']}")
-        print(f"  Authors: {book_info['authors']}")
-        print(f"  Categories: {book_info['categories']}")
-        print(f"  Published Year: {book_info['published_year']}")
-        print(f"  Average Rating: {book_info['average_rating']}")
-        print(f"  Pages: {book_info['num_pages']}")
-        print(f"  Ratings Count: {book_info['ratings_count']}")
-        print(f"  Cosine Similarity: {score:.2f}\n")
+    try:
+        index_of_the_book = df[df.title == close_match].index[0]
+        input_cluster_label = df.loc[index_of_the_book, 'cluster']
 
-# Get user input with clear instructions
-book_name = input("Enter the title of your favorite book: ")
+        if input_cluster_label == 0:
+            input_cluster_interpretation = "Underrated"
+        elif input_cluster_label == 1:
+            input_cluster_interpretation = "Best Seller / Popular"
+        else:
+            input_cluster_interpretation = f"Unknown Cluster ({input_cluster_label})"
 
-# Execute recommendation
-recommend(book_name)
+        print(f"(Input book belongs to Cluster {input_cluster_label}: {input_cluster_interpretation})\n")
 
-"""#### Intepretasi Rekomendasi Buku Interaktif
+        similarity_scores = list(enumerate(similarity[index_of_the_book]))
+        sorted_similar_books = sorted(similarity_scores, key=lambda x: x[1], reverse=True)
 
-Kode ini mendefinisikan dan menjalankan fungsi `recommend` yang telah diperbarui untuk memberikan rekomendasi buku secara interaktif kepada pengguna dengan lebih banyak detail dan kontrol:
+        try:
+            n_recommendations = int(input("Enter the number of Content-Based recommendations desired: "))
+            if n_recommendations < 1:
+                raise ValueError("Number must be at least 1")
+        except ValueError as e:
+            print(f"Invalid input: {e}")
+            return
 
-1.  **Input & Pencocokan Judul:**
-    *   Fungsi `recommend` menerima `book_name` sebagai input.
-    *   Menggunakan `difflib` untuk mencari judul buku yang paling mirip dalam dataset, mengatasi kemungkinan salah ketik.
-    *   Memberikan konfirmasi kepada pengguna mengenai judul buku yang ditemukan (`Closest match found`).
-    *   Menangani kasus jika tidak ada judul yang cocok ditemukan.
+        cbf_recommendations_data = sorted_similar_books[1 : n_recommendations + 1]
 
-2.  **Jumlah Rekomendasi Dinamis:**
-    *   Meminta pengguna untuk **memasukkan jumlah rekomendasi** yang mereka inginkan (`n_recommendations`).
-    *   Menyertakan penanganan error jika input yang dimasukkan tidak valid (bukan angka atau kurang dari 1).
+        if not cbf_recommendations_data:
+             print("No other similar books found for Content-Based recommendation.")
+        else:
+            print(f"\n Top {len(cbf_recommendations_data)} Content-Based Recommendations (Most Similar Content) ")
+            for i, (rec_index, score) in enumerate(cbf_recommendations_data):
+                book_info = df.loc[rec_index, [
+                    'title', 'authors', 'categories', 'published_year',
+                    'average_rating', 'num_pages', 'ratings_count', 'cluster'
+                ]]
+                rec_cluster_label = book_info['cluster']
+                if rec_cluster_label == 0:
+                    cluster_type = "Underrated"
+                elif rec_cluster_label == 1:
+                    cluster_type = "Best Seller / Popular"
+                else:
+                    cluster_type = f"Unknown Cluster ({rec_cluster_label})"
 
-3.  **Pengambilan & Pemeringkatan:**
-    *   Mengambil skor kemiripan (dari matriks `similarity`) untuk buku yang cocok.
-    *   Mengurutkan semua buku lain berdasarkan skor kemiripan secara menurun (dari paling mirip ke kurang mirip).
+                print(f"{i+1}. Title: {book_info['title']}")
+                print(f"   Authors: {book_info['authors']}")
+                print(f"   Categories: {book_info['categories']}")
+                print(f"   Published Year: {book_info['published_year']}")
+                print(f"   Average Rating: {book_info['average_rating']:.1f}")
+                print(f"   Pages: {book_info['num_pages']}")
+                print(f"   Ratings Count: {book_info['ratings_count']}")
+                print(f"   Popularity: {cluster_type} (Cluster {rec_cluster_label})")
+                print(f"   Content Similarity: {score:.3f}\n")
 
-4.  **Pemilihan Top-N (Tanpa Buku Input):**
-    *   Memilih sejumlah (`n_recommendations`) buku teratas dari daftar yang sudah diurutkan.
-    *   Secara spesifik **mengabaikan buku input itu sendiri** (dengan memulai *slicing* dari indeks 1), sehingga hanya menampilkan buku *lain* yang mirip.
+        print("-" * 40)
+        print("\nMost Similar Popular Books (Based on Content Similarity & Cluster 1) ")
 
-5.  **Tampilan Hasil Rinci:**
-    *   Menampilkan `n_recommendations` teratas kepada pengguna.
-    *   Untuk setiap buku yang direkomendasikan, menampilkan **informasi yang lebih lengkap**: Judul, Penulis, Kategori, Tahun Terbit, **Rata-Rata Rating, Jumlah Halaman, Jumlah Rating**, dan Skor Kemiripan Cosine.
+        popular_book_indices = df[df['cluster'] == 1].index
+        popular_similarity_scores = []
+        for idx, score in similarity_scores:
+            if idx != index_of_the_book and idx in popular_book_indices:
+                popular_similarity_scores.append((idx, score))
 
-6.  **Eksekusi:**
-    *   Bagian akhir kode meminta input judul buku dari pengguna dan kemudian memanggil fungsi `recommend` untuk menjalankan seluruh proses rekomendasi.
+        sorted_popular_similar = sorted(popular_similarity_scores, key=lambda x: x[1], reverse=True)
 
-**Kesimpulan:** Project ini dapat Menciptakan pengalaman rekomendasi yang lebih interaktif, memungkinkan pengguna menentukan jumlah hasil dan menampilkan detail yang lebih kaya untuk setiap buku yang direkomendasikan, sambil memastikan buku input asli tidak muncul dalam daftar rekomendasi.
+        n_popular_recs = min(3, len(sorted_popular_similar))
+        if n_popular_recs > 0:
+            print(f"(Showing top {n_popular_recs} most similar books from the 'Best Seller' segment)")
+            for i, (rec_index, score) in enumerate(sorted_popular_similar[:n_popular_recs]):
+                book_info = df.loc[rec_index, [
+                    'title', 'authors', 'categories', 'published_year',
+                    'average_rating', 'num_pages', 'ratings_count', 'cluster'
+                ]]
+
+                print(f"{i+1}. Title: {book_info['title']}")
+                print(f"   Authors: {book_info['authors']}")
+                print(f"   Categories: {book_info['categories']}")
+                print(f"   Published Year: {book_info['published_year']}")
+                print(f"   Pages: {book_info['num_pages']}")
+                print(f"   Average Rating: {book_info['average_rating']:.1f}")
+                print(f"   Ratings Count: {book_info['ratings_count']}")
+                print(f"   Content Similarity: {score:.3f}\n")
+        else:
+            print("No similar popular books found in Cluster 1.")
+        print("-" * 40 + "\n")
+
+
+    except IndexError:
+         print(f"Error processing book: '{close_match}'. Index might be out of bounds.")
+    except Exception as e:
+        print(f"An unexpected error occurred for '{close_match}': {e}")
+
+# Execution part
+if 'df' in locals() and 'cluster' in df.columns and 'list_of_all_titles' in locals() and 'similarity' in locals():
+    book_title_input = input("Enter the title of your favorite book: ")
+    recommend_with_cluster_info(book_title_input)
+else:
+    print("Error: Necessary data (DataFrame with 'cluster' column, list_of_all_titles, similarity matrix) not available. Please run the preceding cells.")
+
+"""#### Penjelasan Kode:
+1.  **Fungsi `recommend_with_cluster_info`**:
+    *   **Input & Kecocokan**: Menerima input judul buku, mencari kecocokan terdekat dalam data menggunakan `difflib`.
+    *   **Info Buku Input**: Mendapatkan indeks dan label cluster buku yang cocok. Memberikan interpretasi label cluster (misal, Cluster 0 = "Underrated", Cluster 1 = "Best Seller / Popular").
+    *   **Rekomendasi Berbasis Konten (CBF)**:
+        *   Mendapatkan skor kemiripan (cosine similarity) buku input terhadap semua buku lain.
+        *   Mengurutkan berdasarkan kemiripan tertinggi.
+        *   Meminta pengguna memasukkan jumlah rekomendasi CBF yang diinginkan.
+        *   Menampilkan N rekomendasi teratas (berdasarkan kemiripan konten) beserta **detail lengkap** (penulis, kategori, tahun, rating, halaman, jumlah rating, **label cluster & interpretasinya**, dan **skor kemiripan konten**).
+    *   **Rekomendasi Buku Populer (Filter Cluster 1)**:
+        *   Mengidentifikasi *semua* buku yang termasuk dalam Cluster 1 ("Best Seller / Popular").
+        *   Memfilter buku-buku populer ini berdasarkan **kemiripan kontennya** dengan *buku input*.
+        *   Mengurutkan buku populer yang relevan ini berdasarkan skor kemiripan konten tertinggi.
+        *   Menampilkan **Top 3** (atau kurang) buku populer yang paling mirip secara konten dengan buku input, beserta detailnya (tanpa info cluster, karena sudah pasti Cluster 1).
+    *   **Error Handling**: Menangani jika buku tidak ditemukan atau terjadi error lain.
+2.  **Eksekusi**: Meminta input judul buku dari pengguna dan menjalankan fungsi `recommend_with_cluster_info`.
+
+---
+
+#### Penjelasan Hasil Output:
+*   **Input & Kecocokan**: Pengguna memasukkan "bali", kecocokan terdekat yang ditemukan adalah "bliss".
+*   **Cluster Buku Input**: Buku "bliss" termasuk dalam **Cluster 0 ("Underrated")**.
+*   **Rekomendasi CBF (n=5)**:
+    *   Menampilkan **5 buku** yang kontennya paling mirip dengan "bliss".
+    *   Semua **5 rekomendasi ini juga berasal dari Cluster 0 ("Underrated")**, dengan skor kemiripan konten berkisar dari **0.651 hingga 0.577**.
+*   **Rekomendasi Populer (Cluster 1)**:
+    *   Menampilkan **Top 3 buku dari Cluster 1 ("Best Seller")** yang kontennya *paling mirip* (meskipun jauh lebih rendah kemiripannya dibandingkan rekomendasi CBF) dengan "bliss".
+    *   Buku-buku ini (misalnya "the alchemist", "the giver") memiliki skor kemiripan konten sekitar **0.15**.
+*   **Kesimpulan Output**: Model berhasil memberikan dua jenis rekomendasi: (1) Buku yang **sangat mirip secara konten** (kebetulan berasal dari cluster yang sama dengan input), dan (2) Buku **populer (dari Cluster 1)** yang masih memiliki *sedikit* kemiripan konten dengan buku input. Ini memberikan pengguna pilihan antara buku yang sangat relevan secara tema/konten dan buku populer yang mungkin menarik minatnya.
 
 ## Kesimpulan
 
