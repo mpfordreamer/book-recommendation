@@ -3,7 +3,7 @@ Proyek Sistem Rekomendasi ini mengembangkan model content-based filtering untuk 
 
 ## Project Overview
 
-<img src="https://github.com/user-attachments/assets/0fc41268-0865-4095-b6dd-7e11e691f1ca" alt="Buku Self Development" width="500">
+<img src="https://github.com/user-attachments/assets/0fc41268-0865-4095-b6dd-7e11e691f1ca" alt="Buku Self Development" width="600">
 
 <br>[Referensi Gambar](https://digitalskola.com/blog/home/buku-self-development)
 
@@ -130,7 +130,7 @@ Berikut adalah penjelasan singkat untuk setiap kolom dalam dataset book.xlsx:
 
 Analisis data eksploratif (EDA) dilakukan untuk mendapatkan pemahaman mendalam mengenai karakteristik dan distribusi data dalam dataset buku (`book.xlsx`). EDA ini membantu mengidentifikasi pola, anomali, dan bias dalam data yang dapat mempengaruhi pengembangan sistem rekomendasi. Berikut adalah temuan utama:
 
-#### 1.  **Distribusi Kategori Buku:**
+1.  **Distribusi Kategori Buku:**
     ![image](https://github.com/user-attachments/assets/579a7e0f-8de2-4922-a27e-106f2f472237)
     *   **Visualisasi:** *Bar chart* menampilkan 10 kategori buku teratas berdasarkan frekuensinya.
     *   **Pengamatan:**
@@ -139,7 +139,7 @@ Analisis data eksploratif (EDA) dilakukan untuk mendapatkan pemahaman mendalam m
         *   **Ketidakseimbangan Data:** Kategori populer lainnya (seperti `history`, `literary criticism`, dll.) muncul dengan frekuensi yang jauh lebih rendah.
     *   **Interpretasi:** Distribusi kategori yang sangat tidak seimbang ini penting untuk diketahui. Hal ini berpotensi menyebabkan model rekomendasi cenderung lebih banyak menyarankan buku fiksi dibandingkan kategori lain yang kurang terwakili, kecuali jika ditangani secara khusus dalam pemodelan.
 
-#### 2.  **Tren Tahun Publikasi:**
+2.  **Tren Tahun Publikasi:**
     ![image](https://github.com/user-attachments/assets/f954c04f-30de-4763-9b79-4aa7f07e1ba6)
 
     *   **Visualisasi:** Histogram menunjukkan distribusi jumlah buku yang diterbitkan per tahun.
@@ -151,7 +151,7 @@ Analisis data eksploratif (EDA) dilakukan untuk mendapatkan pemahaman mendalam m
     *   **Interpretasi:** Dataset ini didominasi oleh buku-buku yang relatif modern. Sistem rekomendasi mungkin akan lebih efektif dalam merekomendasikan buku-buku baru atau yang terbit setelah tahun 1970-an karena representasi data yang lebih kaya untuk periode tersebut.
 
 
-#### 3.  **Popularitas Penulis:**
+3.  **Popularitas Penulis:**
     ![image](https://github.com/user-attachments/assets/cdb33eaa-ceb6-4d76-b038-155d584df720)
     *   **Visualisasi:** *Bar chart* menampilkan 10 penulis dengan jumlah buku terbanyak dalam dataset.
     *   **Pengamatan:**
@@ -161,7 +161,7 @@ Analisis data eksploratif (EDA) dilakukan untuk mendapatkan pemahaman mendalam m
 
 
 
-#### 4.  **Distribusi Rata-Rata Rating:**
+4.  **Distribusi Rata-Rata Rating:**
     ![image](https://github.com/user-attachments/assets/55423b12-730c-48a1-84fa-4e8ce9aadc27)
     *   **Visualisasi:** Histogram menunjukkan distribusi rata-rata rating buku. *Catatan: Skala pada sumbu X (0-500) tampaknya tidak sesuai dengan skala rating buku standar (misalnya 1-5). Ini perlu diperhatikan.*
     *   **Pengamatan:**
@@ -172,7 +172,7 @@ Analisis data eksploratif (EDA) dilakukan untuk mendapatkan pemahaman mendalam m
 
 
 
-#### 5.  **Distribusi Jumlah Halaman:**
+5.  **Distribusi Jumlah Halaman:**
     ![image](https://github.com/user-attachments/assets/d18202a3-8504-4dfe-a478-d35d4291ef17)
     *   **Visualisasi:** *Box plot* menunjukkan sebaran jumlah halaman buku.
     *   **Pengamatan:**
@@ -184,7 +184,7 @@ Analisis data eksploratif (EDA) dilakukan untuk mendapatkan pemahaman mendalam m
 
 
 
-#### 6.  **Keunikan Judul:**
+6.  **Keunikan Judul:**
     *   **Pengamatan:** Dari total 6810 entri buku, terdapat 6397 judul yang unik.
     *   **Persentase:** Ini berarti **93.9%** dari buku dalam dataset memiliki judul yang berbeda satu sama lain.
     *   **Interpretasi:** Tingkat keunikan judul yang tinggi ini menunjukkan kualitas data yang baik dari segi identifikasi buku dan minimnya duplikasi pencatatan berdasarkan judul yang sama persis. Ini memudahkan proses pencocokan judul yang dimasukkan pengguna dengan data yang ada.
