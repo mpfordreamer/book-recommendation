@@ -3,7 +3,8 @@ Proyek Sistem Rekomendasi ini mengembangkan model content-based filtering untuk 
 
 ## Project Overview
 
-<img src="https://github.com/user-attachments/assets/4bdb1b75-671d-46c7-8ad2-ce3031e8af4b" alt="Buku Self Development" width="600"> 
+<img src="https://github.com/user-attachments/assets/4bdb1b75-671d-46c7-8ad2-ce3031e8af4b" alt="Buku Self Development" width="500">
+
 <br>[Referensi Gambar](https://digitalskola.com/blog/home/buku-self-development)
 
 Book Recommendation System
