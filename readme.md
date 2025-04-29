@@ -2,9 +2,9 @@
 Proyek Sistem Rekomendasi ini mengembangkan model content-based filtering untuk menghasilkan top-N rekomendasi buku, serta memanfaatkan K-Means clustering untuk menganalisis pengelompokan buku berdasarkan fitur-fiturnya.
 
 ## Project Overview
----
+
 ![image](https://github.com/user-attachments/assets/4bdb1b75-671d-46c7-8ad2-ce3031e8af4b)
-[Referensi Gambar](https://digitalskola.com/blog/home/buku-self-development)
+<br>[Referensi Gambar](https://digitalskola.com/blog/home/buku-self-development)
 
 Book Recommendation System
 *Konsep Sistem Rekomendasi Buku (Sumber: Diadaptasi dari berbagai sumber)*
