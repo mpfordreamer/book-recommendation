@@ -373,7 +373,11 @@ Metrik berikut digunakan untuk mengevaluasi rekomendasi yang dihasilkan oleh mod
 
 ### Evaluasi K-Means Clustering
 
+<<<<<<< Updated upstream
 Metrik berikut digunakan untuk menilai kualitas pengelompokan (clustering) data buku ke dalam 2 cluster menggunakan K-Means, *sebelum* cluster ini digunakan dalam rekomendasi hybrid. Evaluasi ini penting karena kualitas rekomendasi tambahan bergantung pada kualitas cluster yang terbentuk.
+=======
+Metrik berikut digunakan untuk menilai kualitas pengelompokan (clustering) data buku ke dalam 2 cluster menggunakan K-Means, sebelum cluster ini digunakan dalam rekomendasi hybrid. Pemilihan jumlah cluster sebanyak dua (k=2) ini didasarkan pada pertimbangan praktis untuk kemudahan interpretasi dalam sistem rekomendasi. Dengan dua kelompok, hasil clustering dapat lebih mudah diberi label dan dipahami dalam kategori yang bermakna untuk rekomendasi, seperti membedakan antara buku 'populer/best-seller' dan 'underrated/niche'. Evaluasi ini penting karena kualitas rekomendasi tambahan bergantung pada kualitas cluster yang terbentuk.
+>>>>>>> Stashed changes
 
 #### 1. Silhouette Score
 
