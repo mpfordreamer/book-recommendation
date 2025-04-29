@@ -1,6 +1,10 @@
-# Laporan Proyek Machine Learning - Nama Anda
+# Laporan Proyek Machine Learning - I Dewa Gede Mahesta Parawangsa
+Proyek Sistem Rekomendasi ini mengembangkan model content-based filtering untuk menghasilkan top-N rekomendasi buku, serta memanfaatkan K-Means clustering untuk menganalisis pengelompokan buku berdasarkan fitur-fiturnya.
 
 ## Project Overview
+---
+![image](https://github.com/user-attachments/assets/4bdb1b75-671d-46c7-8ad2-ce3031e8af4b)
+[Referensi Gambar](https://digitalskola.com/blog/home/buku-self-development)
 
 Book Recommendation System
 *Konsep Sistem Rekomendasi Buku (Sumber: Diadaptasi dari berbagai sumber)*
@@ -14,6 +18,8 @@ Untuk mengatasi tantangan ini, proyek ini mengembangkan **Sistem Rekomendasi Buk
 Untuk meningkatkan kualitas rekomendasi dan mengatasi potensi *cold start problem* (kesulitan merekomendasikan item baru atau kepada pengguna baru) [[6](https://www.researchgate.net/publication/327890511_A_Comparison_Study_Between_Content-Based_and_Popularity-Based_Filtering_via_Implementing_a_Book_Recommendation_System), [7](https://www.researchgate.net/publication/221563070_Amazoncom_recommendations_item-to-item_collaborative_filtering)], proyek ini juga mengintegrasikan **Collaborative Filtering**, khususnya metode **User-Based CF**. Pendekatan ini bekerja dengan menganalisis pola rating dari banyak pengguna untuk menemukan pengguna dengan selera serupa dan kemudian merekomendasikan buku yang disukai oleh *peer group* tersebut [[8](https://www.researchgate.net/publication/327890511_A_Comparison_Study_Between_Content-Based_and_Popularity-Based_Filtering_via_Implementing_a_Book_Recommendation_System), [9](https://www.researchgate.net/publication/282860285_Recommendation_systems_Principles_methods_and_evaluation)]. Dengan menggabungkan kedua metode ini (Hybrid System), diharapkan sistem dapat memberikan rekomendasi yang lebih akurat, beragam, dan relevan, seperti yang telah sukses diterapkan oleh platform seperti Netflix [[10](https://dl.acm.org/doi/10.1145/2843948)] dan Amazon [[11](https://ieeexplore.ieee.org/document/1167344), [2](https://download.garuda.kemdikbud.go.id/article.php?article=2044898&val=13150&title=Sistem%20Rekomendasi%20Buku%20pada%20Perpustakaan%20Daerah%20Provinsi%20Kalimantan%20Selatan%20Menggunakan%20Metode%20Content-Based%20Filtering)].
 
 Penerapan sistem rekomendasi ini diharapkan dapat meningkatkan kualitas layanan perpustakaan (atau platform buku lainnya), memudahkan pengguna menemukan buku yang sesuai minat, mempersingkat waktu pencarian, dan secara keseluruhan meningkatkan pengalaman membaca serta mendukung budaya literasi [[2](https://download.garuda.kemdikbud.go.id/article.php?article=2044898&val=13150&title=Sistem%20Rekomendasi%20Buku%20pada%20Perpustakaan%20Daerah%20Provinsi%20Kalimantan%20Selatan%20Menggunakan%20Metode%20Content-Based%20Filtering)].
+
+---
 
 ## Business Understanding
 
@@ -78,6 +84,8 @@ Untuk mencapai tujuan-tujuan tersebut, pendekatan solusi berikut akan diimplemen
         *   **Switching Hybrid:** Menggunakan salah satu metode tergantung konteks (misalnya, CF untuk pengguna lama, CB untuk pengguna baru/buku baru).
         *   **Mixed Hybrid:** Menampilkan rekomendasi dari kedua sistem secara bersamaan.
     *   Tujuan hybrid adalah memanfaatkan kelebihan masing-masing pendekatan dan menutupi kekurangannya (misal, mengatasi *cold start problem* dari CF dengan CB).
+  
+---
 
 ## Data Understanding
 
@@ -121,16 +129,73 @@ Berikut adalah penjelasan singkat untuk setiap kolom dalam dataset book.xlsx:
 *   **`ratings_count`**: Jumlah total pengguna yang telah memberikan penilaian (rating) pada buku. (Bertipe `float64` awalnya).
 *   **`combined_features`**: Kolom baru yang dibuat saat *data preparation*, berisi gabungan teks dari `title`, `authors`, `categories`, dan `published_year` yang telah dibersihkan. Ini adalah input utama untuk TF-IDF.
 
-### EDA - Eksploratory Data Analysis
+---
 
-Analisis data eksploratif dilakukan untuk memahami karakteristik dataset buku:
+### Eksploratory Data Analysis (EDA)
 
-*   **Distribusi Kategori Buku:** Visualisasi menunjukkan bahwa kategori **Fiksi (`fiction`)** sangat mendominasi dataset (lebih dari 2500 buku), diikuti oleh Fiksi Remaja (`juvenile fiction`) dan Biografi/Autobiografi. Distribusi kategori sangat tidak seimbang.
-*   **Tren Tahun Publikasi:** Sebagian besar buku diterbitkan dalam beberapa dekade terakhir, dengan puncak distribusi berada di **awal tahun 2000-an**. Distribusi ini miring ke kiri (ekor panjang ke masa lalu), menunjukkan lebih sedikit buku tua dalam dataset.
-*   **Popularitas Penulis:** **Agatha Christie** dan **Stephen King** adalah penulis yang paling banyak karyanya muncul dalam dataset ini, diikuti oleh William Shakespeare dan J.R.R. Tolkien. Ini menandakan representasi kuat dari penulis populer/produktif.
-*   **Distribusi Rata-Rata Rating:** Histogram menunjukkan distribusi **bimodal**, dengan puncak utama di sekitar **rating 4.0** (menandakan mayoritas buku dinilai positif) dan puncak kecil di dekat rating 0-1 (menunjukkan sejumlah kecil buku dengan rating sangat buruk).
-*   **Distribusi Jumlah Halaman:** *Box plot* menunjukkan bahwa sebagian besar buku memiliki panjang moderat (median sekitar 250-300 halaman), tetapi terdapat **banyak *outlier* buku yang sangat tebal** (lebih dari 1000 halaman), membuat distribusi miring ke kanan.
-*   **Keunikan Judul:** Sekitar **93.9%** judul buku dalam dataset adalah unik, menunjukkan duplikasi judul yang minimal.
+Analisis data eksploratif (EDA) dilakukan untuk mendapatkan pemahaman mendalam mengenai karakteristik dan distribusi data dalam dataset buku (`book.xlsx`). EDA ini membantu mengidentifikasi pola, anomali, dan bias dalam data yang dapat mempengaruhi pengembangan sistem rekomendasi. Berikut adalah temuan utama:
+
+1.  **Distribusi Kategori Buku:**
+    *   **Visualisasi:** *Bar chart* menampilkan 10 kategori buku teratas berdasarkan frekuensinya.
+    *   **Pengamatan:**
+        *   **Dominasi Fiksi:** Kategori **Fiksi (`fiction`)** sangat dominan, muncul lebih dari 2500 kali, jauh mengungguli kategori lainnya.
+        *   **Kategori Populer Berikutnya:** Fiksi Remaja (`juvenile fiction`) dan Biografi/Autobiografi (`biography & autobiography`) menempati posisi kedua dan ketiga dengan frekuensi masing-masing sekitar 540 dan 400 kali.
+        *   **Ketidakseimbangan Data:** Kategori populer lainnya (seperti `history`, `literary criticism`, dll.) muncul dengan frekuensi yang jauh lebih rendah.
+    *   **Interpretasi:** Distribusi kategori yang sangat tidak seimbang ini penting untuk diketahui. Hal ini berpotensi menyebabkan model rekomendasi cenderung lebih banyak menyarankan buku fiksi dibandingkan kategori lain yang kurang terwakili, kecuali jika ditangani secara khusus dalam pemodelan.
+
+    ![image](https://github.com/user-attachments/assets/579a7e0f-8de2-4922-a27e-106f2f472237)
+
+2.  **Tren Tahun Publikasi:**
+    *   **Visualisasi:** Histogram menunjukkan distribusi jumlah buku yang diterbitkan per tahun.
+    *   **Pengamatan:**
+        *   **Konsentrasi pada Era Modern:** Sebagian besar buku dalam dataset diterbitkan dalam beberapa dekade terakhir.
+        *   **Puncak Distribusi:** Jumlah buku terbanyak diterbitkan sekitar **awal tahun 2000-an**.
+        *   **Distribusi Miring ke Kiri:** Terdapat "ekor" panjang ke arah kiri, menunjukkan jumlah buku yang jauh lebih sedikit dari tahun-tahun yang lebih lama (misalnya, sebelum 1975).
+        *   **Peningkatan Signifikan:** Jumlah penerbitan buku mulai meningkat secara signifikan sejak sekitar tahun 1970-an.
+    *   **Interpretasi:** Dataset ini didominasi oleh buku-buku yang relatif modern. Sistem rekomendasi mungkin akan lebih efektif dalam merekomendasikan buku-buku baru atau yang terbit setelah tahun 1970-an karena representasi data yang lebih kaya untuk periode tersebut.
+
+    ![image](https://github.com/user-attachments/assets/f954c04f-30de-4763-9b79-4aa7f07e1ba6)
+
+3.  **Popularitas Penulis:**
+    *   **Visualisasi:** *Bar chart* menampilkan 10 penulis dengan jumlah buku terbanyak dalam dataset.
+    *   **Pengamatan:**
+        *   **Penulis Teratas:** **Agatha Christie** dan **Stephen King** memiliki representasi buku terbanyak (masing-masing lebih dari 35 buku). William Shakespeare juga sangat terwakili.
+        *   **Representasi Tinggi Lainnya:** Penulis populer lain seperti J.R.R. Tolkien, Virginia Woolf, dan Sandra Brown juga memiliki jumlah buku yang signifikan (umumnya antara 17 hingga 26 buku).
+    *   **Interpretasi:** Dataset ini memiliki bias terhadap penulis-penulis yang sangat populer dan produktif. Rekomendasi yang dihasilkan mungkin cenderung mengulang penulis-penulis ini, kecuali jika ada mekanisme untuk meningkatkan keberagaman penulis.
+
+    ![image](https://github.com/user-attachments/assets/cdb33eaa-ceb6-4d76-b038-155d584df720)
+
+4.  **Distribusi Rata-Rata Rating:**
+    *   **Visualisasi:** Histogram menunjukkan distribusi rata-rata rating buku. *Catatan: Skala pada sumbu X (0-500) tampaknya tidak sesuai dengan skala rating buku standar (misalnya 1-5). Ini perlu diperhatikan.*
+    *   **Pengamatan:**
+        *   **Distribusi Bimodal:** Terdapat dua puncak utama dalam distribusi.
+        *   **Puncak Rating Tinggi:** Puncak utama (mayoritas buku) berada di sekitar **rating 380-420** (pada skala 0-500 yang tertera), menandakan kecenderungan buku memiliki rating tinggi dalam skala tersebut.
+        *   **Puncak Kecil Rating Rendah:** Terdapat puncak kedua yang jauh lebih kecil di sekitar rating 0-50, menunjukkan adanya sekelompok buku dengan rating sangat rendah.
+    *   **Interpretasi:** Adanya dua kelompok rating (tinggi dan rendah) ini menarik. Namun, **skala rating yang tidak standar (0-491?) memerlukan klarifikasi atau normalisasi** sebelum fitur ini dapat digunakan secara efektif dalam pemodelan, karena interpretasi nilai absolutnya menjadi sulit. Pola bimodal mungkin menunjukkan adanya segmen buku yang sangat disukai dan yang sangat tidak disukai.
+
+    ![image](https://github.com/user-attachments/assets/55423b12-730c-48a1-84fa-4e8ce9aadc27)
+
+5.  **Distribusi Jumlah Halaman:**
+    *   **Visualisasi:** *Box plot* menunjukkan sebaran jumlah halaman buku.
+    *   **Pengamatan:**
+        *   **Konsentrasi Utama (Kotak/Box):** 50% buku di tengah dataset memiliki jumlah halaman antara sekitar 150-200 hingga 350-400 halaman.
+        *   **Median:** Garis di dalam kotak (median) berada di sekitar 250-300 halaman, artinya setengah dari buku memiliki halaman lebih sedikit dari ini, dan setengahnya lebih banyak.
+        *   **Banyaknya Outlier:** Terdapat sangat banyak titik (*outlier*) di sebelah kanan *whisker*, menunjukkan adanya sejumlah besar buku dengan jumlah halaman yang sangat tinggi (bisa mencapai lebih dari 1000, 2000, bahkan 3000 halaman).
+        *   **Distribusi Miring ke Kanan:** Keberadaan banyak *outlier* ini membuat distribusi jumlah halaman menjadi sangat miring ke kanan (*right-skewed*).
+    *   **Interpretasi:** Sebagian besar buku memiliki ketebalan standar, namun keberadaan buku-buku yang sangat tebal sebagai *outlier* signifikan. Jika fitur jumlah halaman digunakan dalam pemodelan (misalnya, untuk clustering), pengaruh *outlier* ini perlu diperhatikan, dan penggunaan teknik *scaling* yang tahan *outlier* (seperti `RobustScaler`) mungkin diperlukan.
+
+    ![image](https://github.com/user-attachments/assets/d18202a3-8504-4dfe-a478-d35d4291ef17)
+
+6.  **Keunikan Judul:**
+    *   **Pengamatan:** Dari total 6810 entri buku, terdapat 6397 judul yang unik.
+    *   **Persentase:** Ini berarti **93.9%** dari buku dalam dataset memiliki judul yang berbeda satu sama lain.
+    *   **Interpretasi:** Tingkat keunikan judul yang tinggi ini menunjukkan kualitas data yang baik dari segi identifikasi buku dan minimnya duplikasi pencatatan berdasarkan judul yang sama persis. Ini memudahkan proses pencocokan judul yang dimasukkan pengguna dengan data yang ada.
+
+    ```
+    Unique Titles: 6397/6810 (93.9%)
+    ```
+
+---
 
 ## Data Preparation
 
@@ -183,21 +248,184 @@ Tahap persiapan data (Data Preparation) merupakan langkah penting untuk memastik
 *   **Alasan:**
     *   **Relevansi untuk Model:** Kolom-kolom ini (nomor identifikasi unik buku dan tautan gambar) tidak secara langsung memberikan informasi tentang *konten* buku yang relevan untuk pendekatan *content-based filtering* menggunakan TF-IDF pada fitur tekstual.
     *   **Efisiensi:** Menghilangkan kolom yang tidak digunakan membuat dataset lebih ringkas dan memfokuskan analisis pada fitur-fitur yang memang berkontribusi pada perhitungan kemiripan konten.
+ 
+---
 
 ## Modeling
-Tahapan ini membahas mengenai model sisten rekomendasi yang Anda buat untuk menyelesaikan permasalahan. Sajikan top-N recommendation sebagai output.
 
-**Rubrik/Kriteria Tambahan (Opsional)**: 
-- Menyajikan dua solusi rekomendasi dengan algoritma yang berbeda.
-- Menjelaskan kelebihan dan kekurangan dari solusi/pendekatan yang dipilih.
+Pada tahap ini, dikembangkan model sistem rekomendasi buku berdasarkan data yang telah disiapkan. Tujuan utamanya adalah untuk memberikan rekomendasi buku yang relevan kepada pengguna. Dalam proyek ini, disajikan dua pendekatan atau solusi rekomendasi yang berbeda:
+
+1.  **Content-Based Filtering (CBF) Murni:** Menggunakan kemiripan konten antar buku.
+2.  **Rekomendasi Berbasis Konten yang Disempurnakan dengan Cluster (CBF + K-Means):** Menggabungkan kemiripan konten dengan informasi dari pengelompokan (clustering) buku untuk memberikan rekomendasi tambahan yang berpotensi lebih beragam atau populer.
+
+Kedua pendekatan ini dibangun untuk mengatasi permasalahan dalam menemukan buku yang sesuai dengan preferensi pengguna.
+
+### 1. Content-Based Filtering (TF-IDF & Cosine Similarity)
+
+Pendekatan pertama adalah sistem rekomendasi berbasis konten murni. Ide dasarnya adalah merekomendasikan buku yang memiliki kemiripan fitur atau konten dengan buku yang disukai pengguna di masa lalu atau buku yang sedang dilihat.
+
+**Implementasi:**
+
+1.  **Penggabungan Fitur Konten:** Fitur-fitur tekstual dan kategorikal yang relevan seperti `title`, `categories`, `authors`, dan `published_year` digabungkan menjadi satu representasi teks tunggal untuk setiap buku. Ini menciptakan deskripsi komprehensif dari konten setiap buku.
+2.  **TF-IDF Vectorization:** Teks gabungan tersebut kemudian diubah menjadi representasi vektor numerik menggunakan `TfidfVectorizer` dari `sklearn`. TF-IDF (Term Frequency-Inverse Document Frequency) mengukur seberapa penting sebuah kata dalam sebuah dokumen (buku) relatif terhadap keseluruhan koleksi dokumen (semua buku). Hasilnya adalah matriks TF-IDF di mana setiap baris mewakili buku dan setiap kolom mewakili kata unik, dengan nilai sel adalah skor TF-IDF.
+3.  **Cosine Similarity:** Kemiripan antar buku dihitung berdasarkan vektor TF-IDF mereka menggunakan metrik Cosine Similarity. Metrik ini mengukur kosinus sudut antara dua vektor, menghasilkan skor antara 0 (tidak mirip) hingga 1 (sangat mirip). Matriks kemiripan (similarity matrix) persegi dihasilkan, di mana `similarity[i][j]` menunjukkan skor kemiripan antara buku ke-i dan buku ke-j.
+4.  **Pemberian Rekomendasi Top-N:** Ketika pengguna memberikan input judul buku, sistem mencari kecocokan terdekat dalam dataset, mengambil baris skor kemiripan yang sesuai dari matriks similarity, mengurutkannya secara menurun, dan menyajikan N buku teratas (tidak termasuk buku input itu sendiri) sebagai rekomendasi.
+
+**Contoh Output Top-5 Rekomendasi (untuk input 'Gilead'):**
+
+| Rank | Title            | Authors               | Categories   | Published Year | Cosine Similarity |
+| :--- | :--------------- | :-------------------- | :----------- | :------------- | :---------------- |
+| 1    | the martians     | kim stanley robinson  | fiction      | 2000           | 0.32              |
+| 2    | robinson crusoe  | daniel defoe          | fiction      | 2003           | 0.31              |
+| 3    | kilo class       | patrick robinson      | fiction      | 1999           | 0.31              |
+| 4    | uss seawolf      | patrick robinson      | fiction      | 2001           | 0.30              |
+| 5    | pacific edge     | kim stanley robinson  | fiction      | 1995           | 0.30              |
+
+**Kelebihan Content-Based Filtering:**
+
+*   **Tidak Memerlukan Data Pengguna Lain:** Rekomendasi dibuat berdasarkan profil item dan preferensi satu pengguna, tidak bergantung pada data pengguna lain (mengatasi *user cold-start*).
+*   **Transparansi:** Relatif mudah menjelaskan mengapa suatu item direkomendasikan (karena mirip dengan item lain yang disukai).
+*   **Mampu Merekomendasikan Item Baru/Kurang Populer:** Selama item memiliki deskripsi fitur yang memadai, item tersebut dapat direkomendasikan meskipun belum pernah dirating oleh siapa pun (mengatasi *item cold-start*).
+
+**Kekurangan Content-Based Filtering:**
+
+*   **Keterbatasan Analisis Konten:** Membutuhkan data fitur item yang baik. Jika fitur tidak cukup deskriptif atau sulit diekstrak (misalnya, kualitas tulisan, nuansa plot), kualitas rekomendasi menurun.
+*   **Overspecialisasi:** Cenderung merekomendasikan item yang sangat mirip dengan apa yang sudah disukai pengguna, sehingga sulit menemukan item dari genre atau tipe yang benar-benar baru (*serendipity* rendah).
+*   **Membutuhkan Pengetahuan Domain:** Proses *feature engineering* (memilih dan menggabungkan fitur) seringkali memerlukan pemahaman domain yang baik.
+
+### 2. Rekomendasi Berbasis Konten yang Disempurnakan dengan Cluster (CBF + K-Means)
+
+Pendekatan kedua bertujuan untuk menambahkan dimensi lain pada rekomendasi dengan memanfaatkan struktur kelompok dalam data buku. Selain memberikan rekomendasi berdasarkan kemiripan konten murni, pendekatan ini juga mempertimbangkan popularitas atau karakteristik kelompok buku.
+
+**Implementasi:**
+
+1.  **Seleksi Fitur Clustering:** Fitur numerik yang mencerminkan popularitas atau karakteristik umum buku seperti `average_rating`, `num_pages`, dan `ratings_count` dipilih.
+2.  **Scaling Fitur:** Fitur-fitur tersebut di-scaling menggunakan `RobustScaler` agar nilainya berada dalam rentang yang sebanding dan tidak didominasi oleh fitur dengan skala besar. RobustScaler dipilih karena ketahanannya terhadap *outlier*.
+3.  **K-Means Clustering:** Algoritma K-Means diterapkan pada data fitur yang telah di-scaling untuk mengelompokkan buku ke dalam cluster. Berdasarkan analisis Elbow Method dan Silhouette Score, jumlah cluster optimal (k) ditetapkan menjadi 2. Hasil clustering ini (misalnya, Cluster 0 dan Cluster 1) kemudian ditambahkan sebagai fitur baru ke DataFrame utama. Dalam proyek ini, cluster-cluster tersebut diinterpretasikan sebagai representasi, misalnya, buku "Underrated" (Cluster 0) dan buku "Best Seller / Popular" (Cluster 1).
+4.  **Pemberian Rekomendasi Gabungan:** Fungsi `recommend_with_cluster_info` dikembangkan. Fungsi ini:
+    *   Mengambil input judul buku dan menentukan clusternya.
+    *   Menampilkan Top-N rekomendasi berdasarkan **kemiripan konten (CBF)** murni (sama seperti pendekatan pertama).
+    *   Secara terpisah, mengidentifikasi buku-buku dari **cluster "populer" (Cluster 1)**, menghitung kemiripan kontennya dengan buku input (menggunakan matriks similarity CBF), dan menampilkan Top-3 buku populer yang paling mirip. Ini memberikan opsi rekomendasi tambahan yang mungkin tidak muncul di Top-N CBF murni jika buku input berasal dari cluster yang berbeda.
+
+**Contoh Output Top-3 Rekomendasi Populer (untuk input 'bali'/'bliss' dari Cluster 0):**
+
+| Rank | Title                        | Authors         | Categories   | Published Year | Content Similarity |
+| :--- | :--------------------------- | :-------------- | :----------- | :------------- | :----------------- |
+| 1    | the alchemist                | paulo coelho    | fiction      | 2006           | 0.158              |
+| 2    | the giver                    | lois lowry      | juvenile fiction | 2006           | 0.151              |
+| 3    | the fellowship of the ring | j r r tolkien | fiction      | 2003           | 0.151              |
+
+**Kelebihan Pendekatan CBF + K-Means:**
+
+*   **Potensi Peningkatan Keberagaman/Serendipity:** Dengan menyarankan item populer dari cluster lain (meskipun kemiripan kontennya mungkin lebih rendah daripada rekomendasi CBF murni), sistem dapat membantu pengguna menemukan item di luar "gelembung filter" mereka.
+*   **Memanfaatkan Struktur Data:** Menggunakan informasi implisit dari interaksi pengguna (rating, jumlah halaman/rating) melalui clustering untuk menginformasikan rekomendasi.
+*   **Memberikan Konteks Tambahan:** Informasi cluster ("Underrated", "Best Seller") memberikan konteks tambahan pada buku yang direkomendasikan.
+
+**Kekurangan Pendekatan CBF + K-Means:**
+
+*   **Ketergantungan pada Kualitas Cluster:** Efektivitas rekomendasi tambahan sangat bergantung pada seberapa baik dan bermakna hasil clustering K-Means. Jika cluster tidak terpisah dengan baik atau tidak merepresentasikan konsep yang berguna (seperti popularitas), manfaatnya berkurang.
+*   **Kompleksitas Tambahan:** Memerlukan langkah tambahan untuk clustering dan interpretasi cluster.
+*   **Masih Berbasis Konten:** Rekomendasi "populer" masih diurutkan berdasarkan kemiripan konten (CBF) dengan input, hanya saja difilter dari cluster tertentu. Ini bukan pendekatan kolaboratif murni.
+*   **Ketidakseimbangan Cluster:** Seperti yang terlihat pada evaluasi, jika satu cluster sangat dominan (Cluster 0: 99.7%), kemampuan untuk merekomendasikan item dari cluster minoritas (Cluster 1: 0.3%) menjadi terbatas atau kurang berdampak luas.
+
+---
 
 ## Evaluation
-Pada bagian ini Anda perlu menyebutkan metrik evaluasi yang digunakan. Kemudian, jelaskan hasil proyek berdasarkan metrik evaluasi tersebut.
 
-Ingatlah, metrik evaluasi yang digunakan harus sesuai dengan konteks data, problem statement, dan solusi yang diinginkan.
+Pada bagian ini, dilakukan evaluasi terhadap model-model sistem rekomendasi yang telah dikembangkan: Content-Based Filtering (CBF) murni dan K-Means Clustering yang digunakan untuk memperkaya rekomendasi. Evaluasi bertujuan untuk mengukur relevansi, keberagaman, dan kualitas struktur data yang ditemukan oleh model.
 
-**Rubrik/Kriteria Tambahan (Opsional)**: 
-- Menjelaskan formula metrik dan bagaimana metrik tersebut bekerja.
+Metrik evaluasi yang digunakan disesuaikan dengan tugas masing-masing model:
+
+1.  **Evaluasi Content-Based Filtering (CBF):**
+    *   Skor Kemiripan (Cosine Similarity - sebagai proxy Relevansi)
+    *   Intra-List Similarity (sebagai metrik Keberagaman)
+2.  **Evaluasi K-Means Clustering:**
+    *   Silhouette Score
+    *   Calinski-Harabasz Index
+    *   Davies-Bouldin Index
+3.  **Evaluasi Model Hybrid (CBF + K-Means):**
+    *   Analisis Keselarasan Cluster (Cluster Alignment)
+
+### Evaluasi Content-Based Filtering (CBF)
+
+Metrik berikut digunakan untuk mengevaluasi rekomendasi yang dihasilkan oleh model CBF murni (TF-IDF & Cosine Similarity).
+
+#### 1. Skor Kemiripan (Relevansi)
+
+*   **Metrik:** Rata-rata Skor Kemiripan dan Skor Kemiripan Tertinggi (Average & Highest Similarity Score).
+*   **Tujuan:** Mengukur seberapa mirip (relevan) buku-buku yang direkomendasikan dengan buku input berdasarkan kontennya.
+*   **Cara Kerja:** Metrik ini menggunakan skor Cosine Similarity yang dihasilkan pada tahap modeling.
+    *   `Cosine Similarity (A, B) = (A · B) / (||A|| * ||B||)`
+    *   Skor berkisar antara 0 (tidak mirip) hingga 1 (identik). Skor yang lebih tinggi untuk rekomendasi teratas menunjukkan relevansi konten yang lebih baik. Rata-rata skor memberikan gambaran umum kemiripan daftar rekomendasi, sedangkan skor tertinggi menunjukkan item paling mirip.
+*   **Hasil Proyek:**
+    *   Untuk input 'Gilead', Rata-rata Skor: 0.31, Skor Tertinggi: 0.32.
+    *   Untuk input 'The Four Loves', Rata-rata Skor: 0.49, Skor Tertinggi: 0.64.
+    *   Untuk input 'Rage of Angels', Rata-rata Skor: 0.48, Skor Tertinggi: 0.51.
+    *   Untuk input 'The One Tree', Rata-rata Skor: 0.41, Skor Tertinggi: 0.48.
+    *   Untuk input '1984', Rata-rata Skor: 0.50, Skor Tertinggi: 0.63.
+*   **Interpretasi:** Skor kemiripan rata-rata dan tertinggi menunjukkan tingkat relevansi yang moderat hingga cukup baik. Rekomendasi yang diberikan memiliki hubungan konten yang jelas dengan buku input, namun tidak terlalu identik, yang mungkin diinginkan untuk penemuan.
+
+#### 2. Intra-List Similarity (Keberagaman)
+
+*   **Metrik:** Rata-rata Intra-List Similarity.
+*   **Tujuan:** Mengukur seberapa mirip buku-buku *di dalam* daftar rekomendasi satu sama lain. Skor yang lebih rendah menunjukkan keberagaman yang lebih tinggi (buku-buku yang direkomendasikan tidak terlalu mirip satu sama lain).
+*   **Cara Kerja:** Metrik ini menghitung rata-rata Cosine Similarity untuk semua pasangan buku unik dalam daftar rekomendasi Top-N. Skor 0 berarti tidak ada kemiripan sama sekali antar rekomendasi (sangat beragam), skor 1 berarti semua rekomendasi identik (tidak beragam). Dihitung menggunakan fungsi `calculate_cbf_diversity`
+    *   Konsep: `Avg(CosineSim(Item_i, Item_j))` untuk semua `i != j` dalam daftar rekomendasi.
+*   **Hasil Proyek:**
+    *   Untuk input 'Gilead': 0.34
+    *   Untuk input 'The Four Loves': 0.47
+    *   Untuk input 'Rage of Angels': 0.32
+    *   Untuk input 'The One Tree': 0.20
+    *   Untuk input '1984': 0.35
+*   **Interpretasi:** Nilai Intra-List Similarity yang dihasilkan relatif rendah (jauh di bawah 0.7), menunjukkan bahwa rekomendasi yang dihasilkan oleh model CBF memiliki **keberagaman yang baik**. Sistem tidak hanya menyarankan buku yang sangat mirip satu sama lain.
+
+### Evaluasi K-Means Clustering
+
+Metrik berikut digunakan untuk menilai kualitas pengelompokan (clustering) data buku ke dalam 2 cluster menggunakan K-Means, *sebelum* cluster ini digunakan dalam rekomendasi hybrid. Evaluasi ini penting karena kualitas rekomendasi tambahan bergantung pada kualitas cluster yang terbentuk.
+
+#### 1. Silhouette Score
+
+*   **Tujuan:** Mengukur seberapa baik setiap objek (buku) cocok dengan clusternya sendiri dibandingkan dengan cluster tetangga terdekat.
+*   **Cara Kerja:** Skor berkisar antara -1 hingga 1.
+    *   Nilai mendekati +1: Objek sangat cocok dengan clusternya sendiri dan jauh dari cluster lain.
+    *   Nilai sekitar 0: Objek berada dekat dengan batas antar cluster.
+    *   Nilai mendekati -1: Objek mungkin salah diklasifikasikan ke dalam cluster.
+    *   Rumus ini membandingkan jarak rata-rata objek ke titik lain dalam clusternya (a) dengan jarak rata-rata objek ke titik dalam cluster terdekat berikutnya (b): `(b - a) / max(a, b)`. Skor keseluruhan adalah rata-rata skor Silhouette untuk semua objek.
+*   **Hasil Proyek:** 0.976.
+*   **Interpretasi:** Skor yang sangat tinggi (mendekati 1) menunjukkan bahwa K-Means berhasil menciptakan **cluster yang sangat padat dan terpisah dengan baik**. Buku-buku dalam satu cluster sangat mirip satu sama lain (berdasarkan fitur clustering) dan sangat berbeda dari buku di cluster lain.
+
+#### 2. Calinski-Harabasz Index (Variance Ratio Criterion)
+
+*   **Tujuan:** Mengukur rasio antara varians antar-cluster (seberapa jauh pusat cluster satu sama lain) dan varians intra-cluster (seberapa padat titik data dalam satu cluster).
+*   **Cara Kerja:** Skor yang lebih tinggi menunjukkan cluster yang lebih baik (lebih padat dan lebih terpisah). Tidak ada batas atas, tetapi nilai yang lebih tinggi secara relatif lebih baik.
+    *   Formula: `(SSB / SSW) * ((N - k) / (k - 1))` di mana SSB adalah Sum of Squares Between clusters, SSW adalah Sum of Squares Within clusters, N jumlah data, k jumlah cluster.
+*   **Hasil Proyek:** 10063.465.
+*   **Interpretasi:** Nilai yang sangat tinggi ini mengindikasikan bahwa **struktur cluster yang ditemukan sangat jelas**, dengan varians antar-cluster jauh lebih besar daripada varians intra-cluster.
+
+#### 3. Davies-Bouldin Index
+
+*   **Tujuan:** Mengukur rata-rata 'kemiripan' antara setiap cluster dengan cluster yang paling mirip dengannya, di mana kemiripan adalah rasio jarak intra-cluster terhadap jarak antar-cluster.
+*   **Cara Kerja:** Skor yang lebih rendah menunjukkan pemisahan cluster yang lebih baik, dengan 0 sebagai skor terendah yang mungkin. Indeks menghitung rasio penyebaran dalam cluster terhadap pemisahan antar cluster untuk setiap cluster, lalu merata-ratakannya.
+    *   Formula: `(1/k) * Σ max( (Si + Sj) / Dij )` dimana k jumlah cluster, Si simpangan rata-rata cluster i dari centroidnya, Dij jarak antar centroid cluster i dan j. Dicari rasio maksimum untuk setiap cluster i terhadap cluster lain j.
+*   **Hasil Proyek:** 0.353.
+*   **Interpretasi:** Skor yang relatif rendah (mendekati 0) ini juga menunjukkan bahwa **cluster terpisah dengan baik**.
+
+**Kesimpulan Evaluasi Clustering:** Ketiga metrik (Silhouette, Calinski-Harabasz, Davies-Bouldin) secara konsisten menunjukkan bahwa algoritma K-Means dengan k=2 berhasil menemukan struktur cluster yang kuat dan jelas dalam data berdasarkan fitur `average_rating`, `num_pages`, dan `ratings_count`. Ini memberikan dasar yang baik untuk menggunakan label cluster dalam pendekatan rekomendasi hybrid.
+
+### Evaluasi Model Hybrid (CBF + K-Means)
+
+Metrik ini melihat bagaimana rekomendasi CBF murni berinteraksi dengan struktur cluster yang ditemukan.
+
+#### 1. Keselarasan Cluster (Cluster Alignment)
+
+*   **Tujuan:** Menganalisis dari cluster mana rekomendasi CBF berasal, relatif terhadap cluster buku input.
+*   **Cara Kerja:** Untuk buku input dari cluster tertentu, dihitung persentase rekomendasi Top-N CBF yang berasal dari cluster yang sama. Dihitung menggunakan fungsi `analyze_cluster_alignment`.
+*   **Hasil Proyek:**
+    *   Untuk buku input dari Cluster 0 ("Underrated"): 100% (5/5) rekomendasi berasal dari Cluster 0.
+    *   Untuk buku input dari Cluster 1 ("Best Seller"): 0% (0/5) rekomendasi berasal dari Cluster 1 (semua dari Cluster 0).
+*   **Interpretasi:** Hasil ini menunjukkan bahwa rekomendasi CBF sangat dipengaruhi oleh cluster asal buku input, terutama cluster dominan (Cluster 0). Ketika input berasal dari cluster minoritas (Cluster 1), CBF murni cenderung tetap merekomendasikan buku dari cluster mayoritas (Cluster 0) karena kemungkinan besar memiliki lebih banyak tetangga dekat secara konten di sana. Hal ini menyoroti potensi manfaat dari fungsi `recommend_with_cluster_info` yang secara eksplisit menyajikan rekomendasi buku populer dari Cluster 1 sebagai tambahan, meskipun kemiripan kontennya mungkin lebih rendah.
+
+---
 
 ## Referensi
 
@@ -208,7 +436,3 @@ Ingatlah, metrik evaluasi yang digunakan harus sesuai dengan konteks data, probl
 5.  Isinkaye, F. O., Folajimi, Y. O., & Ojokoh, B. (2015). Recommendation systems: Principles, methods and evaluation. *Egyptian Informatics Journal*, 16(3), 261-273. Tersedia: [tautan.](https://www.researchgate.net/publication/282860285_Recommendation_systems_Principles_methods_and_evaluation)
 6.  Khusro, S., Ali, Z., & Ullah, I. (2016). Recommender Systems: Issues, Challenges, and Research Opportunities. *In Information Science and Applications (ICISA), Ho Chi Minh*.
 7.  Azizi, M., & Do, H. (2018). A Collaborative Filtering Recommender System for Test Case Prioritization in Web Applications. *In Proceedings of SAC 2018: Symposium on Applied Computing, Pau*.
-
-_Catatan:_
-- _Anda dapat menambahkan gambar, kode, atau tabel ke dalam laporan jika diperlukan. Temukan caranya pada contoh dokumen markdown di situs editor [Dillinger](https://dillinger.io/), [Github Guides: Mastering markdown](https://guides.github.com/features/mastering-markdown/), atau sumber lain di internet. Semangat!_
-- Jika terdapat penjelasan yang harus menyertakan code snippet, tuliskan dengan sewajarnya. Tidak perlu menuliskan keseluruhan kode project, cukup bagian yang ingin dijelaskan saja.
