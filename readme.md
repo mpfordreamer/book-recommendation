@@ -1,4 +1,4 @@
-# Machine Learning Project Report - I Dewa Gede Mahesta Parawangsa
+# Book Recommendation System
 This Recommendation System project develops a content-based filtering model to generate top-N book recommendations and utilizes K-Means clustering to analyze book groupings based on their features.
 
 ## Project Overview
@@ -430,7 +430,7 @@ This metric looks at how the pure CBF recommendations interact with the found cl
 ---
 
 ## Authors
--   I Dewa Gede Mahesta Parawangsa - [your.email@example.com](mailto:your.email@example.com)
+-   I Dewa Gede Mahesta Parawangsa - [dewamahesta2711l@gmail.com](mailto:dewamahesta2711@gmail.com)
 
 ## Version History
 *   **0.1**
